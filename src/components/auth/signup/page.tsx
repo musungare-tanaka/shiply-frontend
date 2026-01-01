@@ -62,7 +62,7 @@ const Signup = () => {
               type="email"
               placeholder="you@company.com"
               required
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
+              className="mt-1 w-full rounded-md border text-black bg-white border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
             />
           </div>
 
@@ -74,7 +74,7 @@ const Signup = () => {
               type="password"
               placeholder="••••••••"
               required
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
+              className="mt-1 w-full rounded-md  text-black bg-white border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
             />
           </div>
 
@@ -86,7 +86,7 @@ const Signup = () => {
               type="password"
               placeholder="••••••••"
               required
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
+              className="mt-1 w-full rounded-md border  text-black bg-white border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
             />
           </div>
 
