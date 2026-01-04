@@ -1,6 +1,37 @@
 import { Link, useNavigate } from "react-router-dom";
-import React from "react";
+import React, { useEffect } from "react";
 import BASE_URL from "../../../util/util";
+
+interface GoogleResponse {
+  credential: string;
+}
+
+interface GoogleAccountsId {
+  initialize: (config: {
+    client_id: string;
+    callback: (response: GoogleResponse) => void;
+  }) => void;
+  renderButton: (
+    element: HTMLElement | null,
+    config: {
+      theme: string;
+      size: string;
+      width: number;
+    }
+  ) => void;
+}
+
+interface GoogleAccounts {
+  id: GoogleAccountsId;
+}
+
+declare global {
+  interface Window {
+    google: {
+      accounts: GoogleAccounts;
+    };
+  }
+}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,6 +40,30 @@ const Login = () => {
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  useEffect(() => {
+    if (!window.google) return;
+
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: (response: GoogleResponse) => {
+        console.log("GOOGLE ID TOKEN:", response.credential);
+        // TODO: send response.credential to backend for verification & login
+        // For now, you can navigate directly for testing:
+        navigate("/dashboard");
+      },
+    });
+
+    // Render the Google Sign-In button inside the div with id 'google-signin-button'
+    window.google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "outline",
+        size: "large",
+        width: 300,
+      }
+    );
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +115,8 @@ const Login = () => {
         </p>
       </div>
 
-      {/* Google Login (future) */}
-      <button
-        type="button"
-        className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2 hover:bg-gray-50 transition"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          Continue with Google
-        </span>
-      </button>
+      {/* Google Login button placeholder */}
+      <div id="google-signin-button" className="flex justify-center mb-6"></div>
 
       {/* Divider */}
       <div className="flex items-center my-6">
