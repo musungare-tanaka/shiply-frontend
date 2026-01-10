@@ -27,7 +27,7 @@ interface GoogleAccounts {
 
 declare global {
   interface Window {
-    google: {
+    google?: {
       accounts: GoogleAccounts;
     };
   }
@@ -41,20 +41,50 @@ const Login = () => {
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
+  // =======================
+  // GOOGLE LOGIN
+  // =======================
   useEffect(() => {
     if (!window.google) return;
 
     window.google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: (response: GoogleResponse) => {
-        console.log("GOOGLE ID TOKEN:", response.credential);
-        // TODO: send response.credential to backend for verification & login
-        // For now, you can navigate directly for testing:
-        navigate("/dashboard");
+      callback: async (response: GoogleResponse) => {
+        setError("");
+        setLoading(true);
+
+        try {
+          const res = await fetch(`${BASE_URL}/auth/login/google`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token: response.credential }),
+          });
+
+          if (!res.ok) {
+            throw new Error("Google login failed");
+          }
+
+          const data = await res.json();
+
+          // ✅ Save JWT & user info
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("userEmail", data.user.email);
+          localStorage.setItem("userRole", data.user.role);
+
+          // ✅ Navigate AFTER success
+          navigate("/dashboard");
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : "Google login failed"
+          );
+        } finally {
+          setLoading(false);
+        }
       },
     });
 
-    // Render the Google Sign-In button inside the div with id 'google-signin-button'
     window.google.accounts.id.renderButton(
       document.getElementById("google-signin-button"),
       {
@@ -63,8 +93,11 @@ const Login = () => {
         width: 300,
       }
     );
-  }, []);
+  }, [navigate]);
 
+  // =======================
+  // MANUAL LOGIN
+  // =======================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -88,16 +121,14 @@ const Login = () => {
 
       const data = await response.json();
 
-      // Save JWT
+      // ✅ Save JWT
       localStorage.setItem("token", data.token);
       localStorage.setItem("userEmail", data.user.email);
       localStorage.setItem("userRole", data.user.role);
 
-      // Redirect after login
       navigate("/dashboard");
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Login failed";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -115,8 +146,8 @@ const Login = () => {
         </p>
       </div>
 
-      {/* Google Login button placeholder */}
-      <div id="google-signin-button" className="flex justify-center mb-6"></div>
+      {/* Google Login */}
+      <div id="google-signin-button" className="flex justify-center mb-6" />
 
       {/* Divider */}
       <div className="flex items-center my-6">
@@ -137,7 +168,6 @@ const Login = () => {
           </label>
           <input
             type="email"
-            placeholder="you@company.com"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -151,7 +181,6 @@ const Login = () => {
           </label>
           <input
             type="password"
-            placeholder="••••••••"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -171,7 +200,10 @@ const Login = () => {
       {/* Signup link */}
       <p className="text-center text-sm text-gray-500 mt-6">
         Don't have an account?{" "}
-        <Link to="/signup" className="text-[#474b4f] font-medium hover:underline">
+        <Link
+          to="/signup"
+          className="text-[#474b4f] font-medium hover:underline"
+        >
           Sign up
         </Link>
       </p>

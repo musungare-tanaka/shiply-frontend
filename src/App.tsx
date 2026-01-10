@@ -5,7 +5,7 @@ import LandingPage from "./components/landing_page/page";
 import Login from "./components/auth/login/page";
 import Signup from "./components/auth/signup/page";
 import ProtectedRoute from "./components/protectedRoutes/page";
-import Dashboard from  "./components/User/dashboard/page";
+import UserLayout from "./components/layouts/dashboard_layout/page";
 
 function AppContent() {
   const location = useLocation();
@@ -31,7 +31,7 @@ function AppContent() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <UserLayout />
             </ProtectedRoute>
           }
         />
