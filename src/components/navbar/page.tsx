@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import shiplyLogo from "../../assets/shiply.png";
+import shiplyLogo from "/transparent-logo.svg";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,8 +12,7 @@ const NavBar = () => {
           
           {/* Logo */}
           <div className="flex items-center">
-            <img src={shiplyLogo} alt="Shiply Logo" className="h-8 w-auto" />
-            <span className="ml-2 text-xl font-bold text-gray-800">Shiply</span>
+            <img src={shiplyLogo} alt="Shiply Logo" className="h-16 w-auto" />
           </div>
 
           {/* Desktop Navigation */}

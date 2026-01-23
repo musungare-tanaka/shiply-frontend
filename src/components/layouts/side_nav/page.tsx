@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LayoutDashboard, FolderOpen, Zap, CreditCard, Settings } from 'lucide-react';
+import { logout } from '../../../util/auth';
 
 const SideNav = () => {
   const [active, setActive] = useState('dashboard');
@@ -12,13 +13,17 @@ const SideNav = () => {
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
+
+  const handleLogout = () => {  
+    logout();  
+    window.location.href = '/login';
+  }
+
   return (
     <aside className="h-screen w-64 bg-slate-950 text-white border-r border-slate-800 overflow-y-auto flex flex-col">
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 p-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-          Shiply
-        </h1>
+        <img src="public/transparent-logo.png" alt="Shiply" className="h-20 w-auto mb-2" />
         <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Hosting Platform</p>
       </div>
 
@@ -54,6 +59,9 @@ const SideNav = () => {
             {localStorage.getItem("userEmail") }
           </p>
         </div>
+
+        <button className='bg-red-700' onClick={handleLogout}>Logout</button>
+
       </div>
     </aside>
   );
