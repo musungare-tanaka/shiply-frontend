@@ -107,7 +107,7 @@ const UseCases = () => {
         {/* CTA */}
         <div className="text-center mt-16">
           <a
-            href="#"
+            href="/login"
             className="inline-block bg-[#474b4f] text-white px-6 py-3 rounded-md font-medium hover:opacity-90 transition"
           >
             Deploy your first service

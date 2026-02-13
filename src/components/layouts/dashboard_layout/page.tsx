@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Settings, X } from "lucide-react";
 import SideNav from "../side_nav/page";
+import { Routes, Route } from "react-router-dom";
+import Dashboard from "./user_pages/Dashboard";
+import Billing from "./user_pages/Billing";
+import Projects from "./user_pages/Projects";
 
-const UserLayout = ({ children }: { children: React.ReactNode }) => {
+const UserLayout = () => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -14,7 +18,6 @@ const UserLayout = ({ children }: { children: React.ReactNode }) => {
           onClick={() => setOpen(false)}
         />
       )}
-
       {/* Sidebar */}
       <div
         className={`
@@ -25,22 +28,32 @@ const UserLayout = ({ children }: { children: React.ReactNode }) => {
           md:static md:translate-x-0
         `}
       >
-        <SideNav />
+        <SideNav onNavClick={() => setOpen(false)} />
       </div>
-
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
         {/* Mobile top bar */}
         <header className="md:hidden flex items-center justify-between px-4 py-5 border-b bg-slate-900 ">
-          <button onClick={() => setOpen(!open)} className=" bg-gray-900 foreground-white border-white p-1 rounded-md">
+          <button
+            onClick={() => setOpen(!open)}
+            className=" bg-gray-900 foreground-white border-white p-1 rounded-md"
+          >
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
-        <img src="public/transparent-logo.png" alt="Shiply" className="h-8 w-auto" />
+          <img
+            src="public/transparent-logo.png"
+            alt="Shiply"
+            className="h-8 w-auto"
+          />
         </header>
-
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4">
-          {children}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="billing" element={<Billing />} />
+            <Route path="settings" element={<Settings />} />
+          </Routes>
         </main>
       </div>
     </div>

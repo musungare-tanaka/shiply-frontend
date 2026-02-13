@@ -28,10 +28,11 @@ function AppContent() {
 
         {/* Protected routes */}
         <Route
-          path="/dashboard"
+          path="/dashboard/*"
           element={
             <ProtectedRoute>
               <UserLayout />
+              
             </ProtectedRoute>
           }
         />

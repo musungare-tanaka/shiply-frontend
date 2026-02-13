@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import BASE_URL from "../../../util/util";
 
 interface GoogleResponse {
@@ -41,11 +41,16 @@ const Login = () => {
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
+  // Prevent multiple Google button renders
+  const googleBtnRendered = useRef(false);
+
   // =======================
   // GOOGLE LOGIN
   // =======================
   useEffect(() => {
-    if (!window.google) return;
+    if (!window.google || googleBtnRendered.current) return;
+
+    googleBtnRendered.current = true;
 
     window.google.accounts.id.initialize({
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -68,12 +73,10 @@ const Login = () => {
 
           const data = await res.json();
 
-          // ✅ Save JWT & user info
           localStorage.setItem("token", data.token);
           localStorage.setItem("userEmail", data.user.email);
           localStorage.setItem("userRole", data.user.role);
 
-          // ✅ Navigate AFTER success
           navigate("/dashboard");
         } catch (err) {
           setError(
@@ -121,7 +124,6 @@ const Login = () => {
 
       const data = await response.json();
 
-      // ✅ Save JWT
       localStorage.setItem("token", data.token);
       localStorage.setItem("userEmail", data.user.email);
       localStorage.setItem("userRole", data.user.role);
@@ -136,6 +138,15 @@ const Login = () => {
 
   return (
     <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
+      {/* Company Logo */}
+      <div className="flex justify-center mb-6">
+        <img
+          src="public/shiply-logo.png"
+          alt="Shiply Logo"
+          className="h-20 w-30"
+        />
+      </div>
+
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-[#474b4f]">
