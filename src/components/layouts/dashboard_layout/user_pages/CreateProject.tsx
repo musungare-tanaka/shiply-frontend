@@ -50,12 +50,12 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-sm text-gray-600">Project Name *</label>
+          <label className="text-sm text-black">Project Name *</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded-md px-3 py-2"
+            className="w-full border rounded-md px-3 py-2 bg-white text-black"
           />
         </div>
 
@@ -64,7 +64,7 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 min-h-[90px]"
+            className="w-full border rounded-md px-3 py-2 min-h-[90px]  bg-white text-black"
           />
         </div>
 
