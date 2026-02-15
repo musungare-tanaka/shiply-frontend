@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import BASE_URL from "../../../../util/util";
 import NoProject from "./NoProject";
 import CreateProject from "./CreateProject";
-import type ProjectsData from "../../../interfaces/ProjectData";
+import type { ProjectsData } from "../../../interfaces/ProjectData";
 
 
 export default function Dashboard() {

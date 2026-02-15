@@ -11,4 +11,4 @@ interface ProjectsData {
   uptime: number;
 }
 
-export default ProjectsData;
+export type { ProjectsData };
