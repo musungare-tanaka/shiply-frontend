@@ -6,6 +6,7 @@ import Dashboard from "./user_pages/Dashboard";
 import Billing from "./user_pages/Billing";
 import Projects from "./user_pages/Projects";
 import ManageProject from "./user_pages/ManageProject";
+import NewServicePage from "./user_pages/NewServicePage";
 
 const UserLayout = () => {
   const [open, setOpen] = useState(false);
@@ -53,6 +54,7 @@ const UserLayout = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<ManageProject />} />
+            <Route path="projects/:projectId/new-service" element={<NewServicePage />} />
             <Route path="billing" element={<Billing />} />
             <Route path="settings" element={<Settings />} />
           </Routes>
