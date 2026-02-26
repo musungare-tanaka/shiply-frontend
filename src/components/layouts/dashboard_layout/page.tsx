@@ -5,6 +5,7 @@ import { Routes, Route } from "react-router-dom";
 import Dashboard from "./user_pages/Dashboard";
 import Billing from "./user_pages/Billing";
 import Projects from "./user_pages/Projects";
+import ManageProject from "./user_pages/ManageProject";
 
 const UserLayout = () => {
   const [open, setOpen] = useState(false);
@@ -51,6 +52,7 @@ const UserLayout = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
+            <Route path="projects/:projectId" element={<ManageProject />} />
             <Route path="billing" element={<Billing />} />
             <Route path="settings" element={<Settings />} />
           </Routes>

@@ -59,7 +59,7 @@ export default function Dashboard() {
         return;
       }
 
-      const response = await fetch(`${BASE_URL}/api/projects/get-project-data`, {
+      const response = await fetch(`${BASE_URL}/api/projects/get-dashboard-data`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

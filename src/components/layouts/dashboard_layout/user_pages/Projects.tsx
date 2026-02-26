@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../../../util/util";
 
 interface ProjectSummary {
@@ -17,6 +18,7 @@ interface ProjectsListResponse {
 export default function Projects() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const logoutAndRedirect = () => {
     localStorage.removeItem("token");
@@ -85,7 +87,7 @@ export default function Projects() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {projects.map(project => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project} onManage={() => navigate(`/dashboard/projects/${project.id}`)} />
           ))}
         </div>
       )}
@@ -93,7 +95,7 @@ export default function Projects() {
   );
 }
 
-const ProjectCard = ({ project }: { project: ProjectSummary }) => {
+const ProjectCard = ({ project, onManage }: { project: ProjectSummary; onManage: () => void }) => {
   return (
     <div className="group bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-indigo-500/50 transition-all">
 
@@ -113,7 +115,7 @@ const ProjectCard = ({ project }: { project: ProjectSummary }) => {
           Services: <span className="text-white font-medium">{project.serviceCount}</span>
         </span>
 
-        <button className="text-sm text-indigo-400 hover:text-indigo-300 transition">
+        <button onClick={onManage} className="text-sm text-indigo-400 hover:text-indigo-300 transition">
           Manage →
         </button>
       </div>
