@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import BASE_URL from "../../../../util/util";
+import BASE_URL, { getErrorMessage } from "../../../../util/util";
+import CreateProject from "./CreateProject";
 
 interface ProjectSummary {
   id: string;
@@ -18,6 +19,8 @@ interface ProjectsListResponse {
 export default function Projects() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const logoutAndRedirect = () => {
@@ -27,6 +30,7 @@ export default function Projects() {
 
   const fetchProjects = async () => {
     try {
+      setError(null);
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -48,7 +52,7 @@ export default function Projects() {
       }
 
       if (!response.ok) {
-        throw new Error("Failed to fetch projects");
+        throw new Error(await getErrorMessage(response, "Failed to fetch projects"));
       }
 
       const result: ProjectsListResponse = await response.json();
@@ -56,14 +60,29 @@ export default function Projects() {
 
     } catch (error) {
       console.error("Projects fetch failed:", error);
+      setError(error instanceof Error ? error.message : "Failed to fetch projects");
+      setProjects([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProjects();
+    void fetchProjects();
   }, []);
+
+  if (creating) {
+    return (
+      <CreateProject
+        onSuccess={() => {
+          setCreating(false);
+          setLoading(true);
+          void fetchProjects();
+        }}
+        onCancel={() => setCreating(false)}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -80,9 +99,35 @@ export default function Projects() {
         <p className="text-slate-400">Manage and view all your projects</p>
       </div>
 
+      <div className="flex justify-end">
+        <button
+          onClick={() => setCreating(true)}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+        >
+          Create Project
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-red-200">{error}</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                void fetchProjects();
+              }}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {projects.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
-          <p className="text-slate-400">No projects found</p>
+          <p className="text-slate-400">No projects found yet. Create one to get started.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

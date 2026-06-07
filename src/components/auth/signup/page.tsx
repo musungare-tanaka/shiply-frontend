@@ -1,10 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import BASE_URL from "../../../util/util";
-
-interface GoogleResponse {
-  credential: string;
-}
+import { useEffect, useRef, useState } from "react";
+import BASE_URL, { getErrorMessage } from "../../../util/util";
+import { renderGoogleButton } from "../../../util/google";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -14,54 +11,48 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const googleBtnRendered = useRef(false);
 
   useEffect(() => {
-    if (!window.google) return;
+    if (googleBtnRendered.current) return;
 
-    window.google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: async (response: GoogleResponse) => {
-        const token = response.credential;
+    googleBtnRendered.current = true;
 
-        try {
-          setError("");
-          setIsLoading(true);
+    renderGoogleButton("google-signin-button", async (response) => {
+      const token = response.credential;
 
-          const res = await fetch(`${BASE_URL}/auth/signup/google`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token }),
-          });
+      try {
+        setError("");
+        setIsLoading(true);
 
-          if (!res.ok) {
-            throw new Error("Google signup failed");
-          }
+        const res = await fetch(`${BASE_URL}/auth/signup/google`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
 
-          const data = await res.json();
-
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("userEmail", data.user.email);
-          localStorage.setItem("userRole", data.user.role);
-
-          navigate("/dashboard");
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Signup failed");
-        } finally {
-          setIsLoading(false);
+        if (!res.ok) {
+          throw new Error(await getErrorMessage(res, "Google signup failed"));
         }
-      },
-    });
 
-    window.google.accounts.id.renderButton(
-      document.getElementById("google-signin-button"),
-      {
-        theme: "outline",
-        size: "large",
-        width: 300,
+        const data = await res.json();
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userEmail", data.user.email);
+        localStorage.setItem("userRole", data.user.role);
+
+        navigate("/dashboard");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Signup failed");
+      } finally {
+        setIsLoading(false);
       }
-    );
+    }).catch((err: Error) => {
+      googleBtnRendered.current = false;
+      setError(err.message);
+    });
   }, [navigate]);
 
 
@@ -87,8 +78,7 @@ const Signup = () => {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Signup failed");
+        throw new Error(await getErrorMessage(res, "Signup failed"));
       }
 
       const data = await res.json();

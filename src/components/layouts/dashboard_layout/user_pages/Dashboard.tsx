@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import BASE_URL from "../../../../util/util";
+import BASE_URL, { getErrorMessage } from "../../../../util/util";
 import NoProject from "./NoProject";
 import CreateProject from "./CreateProject";
 import type { ProjectsData } from "../../../interfaces/ProjectData";
@@ -10,6 +10,8 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [reload, setReload] = useState(0);
   const [dashboardData, setDashboardData] = useState<ProjectsData | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
   const logoutAndRedirect = () => {
     localStorage.removeItem("token");
@@ -18,6 +20,7 @@ export default function Dashboard() {
 
   const checkIfNewUser = async () => {
     try {
+      setDashboardError(null);
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -38,7 +41,7 @@ export default function Dashboard() {
       }
 
       if (!response.ok) {
-        throw new Error("Request failed");
+        throw new Error(await getErrorMessage(response, "Failed to load your account"));
       }
 
       const result = await response.json();
@@ -46,12 +49,14 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error("Auth validation failed:", error);
-      logoutAndRedirect();
+      setDashboardError(error instanceof Error ? error.message : "Failed to load your account");
     }
   };
 
   const fetchDashboardData = async () => {
     try {
+      setDashboardError(null);
+      setIsLoadingDashboard(true);
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -73,7 +78,7 @@ export default function Dashboard() {
       }
 
       if (!response.ok) {
-        throw new Error("Failed to fetch dashboard data");
+        throw new Error(await getErrorMessage(response, "Failed to load dashboard data"));
       }
 
       const result: ProjectsData = await response.json();
@@ -81,25 +86,33 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error("Dashboard fetch failed:", error);
+      setDashboardError(error instanceof Error ? error.message : "Failed to load dashboard data");
+      setDashboardData(null);
+    } finally {
+      setIsLoadingDashboard(false);
     }
   };
 
   useEffect(() => {
-    checkIfNewUser();
+    void checkIfNewUser();
   }, [reload]);
 
   useEffect(() => {
     if (isNewUser === false) {
-      fetchDashboardData();
+      void fetchDashboardData();
     }
   }, [isNewUser]);
 
-  if (isNewUser === null) {
+  if (isNewUser === null && !dashboardError) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center text-white">
         Checking your account...
       </div>
     );
+  }
+
+  if (isNewUser === null && dashboardError) {
+    return <ErrorState message={dashboardError} onRetry={() => setReload((prev) => prev + 1)} />;
   }
 
   if (creating) {
@@ -121,12 +134,20 @@ export default function Dashboard() {
     return <NoProject onCreate={() => setCreating(true)} />;
   }
 
-  if (!dashboardData) {
+  if (isLoadingDashboard) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center text-white">
         Loading dashboard...
       </div>
     );
+  }
+
+  if (dashboardError) {
+    return <ErrorState message={dashboardError} onRetry={() => void fetchDashboardData()} />;
+  }
+
+  if (!dashboardData) {
+    return <ErrorState message="No dashboard data is available yet." onRetry={() => void fetchDashboardData()} />;
   }
 
   return (
@@ -146,5 +167,19 @@ const StatCard = ({ title, value }: { title: string; value: string | number }) =
   <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
     <p className="text-slate-400 text-sm">{title}</p>
     <h3 className="text-2xl font-semibold text-white mt-1">{value}</h3>
+  </div>
+);
+
+const ErrorState = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+  <div className="flex min-h-[70vh] items-center justify-center px-4">
+    <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
+      <p className="text-sm text-red-200">{message}</p>
+      <button
+        onClick={onRetry}
+        className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+      >
+        Try Again
+      </button>
+    </div>
   </div>
 );

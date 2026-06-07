@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Menu, Settings, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import SideNav from "../side_nav/page";
 import { Routes, Route } from "react-router-dom";
 import Dashboard from "./user_pages/Dashboard";
 import Billing from "./user_pages/Billing";
+import Deployments from "./user_pages/Deployments";
 import Projects from "./user_pages/Projects";
 import ManageProject from "./user_pages/ManageProject";
 import NewServicePage from "./user_pages/NewServicePage";
+import SettingsPage from "./user_pages/Settings";
 
 const UserLayout = () => {
   const [open, setOpen] = useState(false);
@@ -43,7 +45,7 @@ const UserLayout = () => {
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
           <img
-            src="public/transparent-logo.png"
+            src="/transparent-logo.png"
             alt="Shiply"
             className="h-8 w-auto"
           />
@@ -55,8 +57,9 @@ const UserLayout = () => {
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<ManageProject />} />
             <Route path="projects/:projectId/new-service" element={<NewServicePage />} />
+            <Route path="deployments" element={<Deployments />} />
             <Route path="billing" element={<Billing />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Routes>
         </main>
       </div>

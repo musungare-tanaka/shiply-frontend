@@ -1,37 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef } from "react";
-import BASE_URL from "../../../util/util";
-
-interface GoogleResponse {
-  credential: string;
-}
-
-interface GoogleAccountsId {
-  initialize: (config: {
-    client_id: string;
-    callback: (response: GoogleResponse) => void;
-  }) => void;
-  renderButton: (
-    element: HTMLElement | null,
-    config: {
-      theme: string;
-      size: string;
-      width: number;
-    }
-  ) => void;
-}
-
-interface GoogleAccounts {
-  id: GoogleAccountsId;
-}
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: GoogleAccounts;
-    };
-  }
-}
+import BASE_URL, { getErrorMessage } from "../../../util/util";
+import { renderGoogleButton } from "../../../util/google";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -48,54 +18,43 @@ const Login = () => {
   // GOOGLE LOGIN
   // =======================
   useEffect(() => {
-    if (!window.google || googleBtnRendered.current) return;
+    if (googleBtnRendered.current) return;
 
     googleBtnRendered.current = true;
 
-    window.google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: async (response: GoogleResponse) => {
-        setError("");
-        setLoading(true);
+    renderGoogleButton("google-signin-button", async (response) => {
+      setError("");
+      setLoading(true);
 
-        try {
-          const res = await fetch(`${BASE_URL}/auth/login/google`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token: response.credential }),
-          });
+      try {
+        const res = await fetch(`${BASE_URL}/auth/login/google`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token: response.credential }),
+        });
 
-          if (!res.ok) {
-            throw new Error("Google login failed");
-          }
-
-          const data = await res.json();
-
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("userEmail", data.user.email);
-          localStorage.setItem("userRole", data.user.role);
-
-          navigate("/dashboard");
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : "Google login failed"
-          );
-        } finally {
-          setLoading(false);
+        if (!res.ok) {
+          throw new Error(await getErrorMessage(res, "Google login failed"));
         }
-      },
-    });
 
-    window.google.accounts.id.renderButton(
-      document.getElementById("google-signin-button"),
-      {
-        theme: "outline",
-        size: "large",
-        width: 300,
+        const data = await res.json();
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userEmail", data.user.email);
+        localStorage.setItem("userRole", data.user.role);
+
+        navigate("/dashboard");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Google login failed");
+      } finally {
+        setLoading(false);
       }
-    );
+    }).catch((err: Error) => {
+      googleBtnRendered.current = false;
+      setError(err.message);
+    });
   }, [navigate]);
 
   // =======================
@@ -119,7 +78,7 @@ const Login = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Invalid email or password");
+        throw new Error(await getErrorMessage(response, "Invalid email or password"));
       }
 
       const data = await response.json();
@@ -141,7 +100,7 @@ const Login = () => {
       {/* Company Logo */}
       <div className="flex justify-center mb-6">
         <img
-          src="public/shiply-logo.png"
+          src="/shiply-logo.png"
           alt="Shiply Logo"
           className="h-20 w-30"
         />
