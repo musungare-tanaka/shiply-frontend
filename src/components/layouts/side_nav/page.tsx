@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FolderOpen, Zap, CreditCard, Settings } from 'lucide-react';
 import { logout } from '../../../util/auth';
@@ -10,8 +9,7 @@ interface SideNavProps {
 const SideNav = ({ onNavClick }: SideNavProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Extract the current path and set active state
+
   const currentPath = location.pathname;
   const getActiveId = () => {
     if (currentPath.includes('/projects')) return 'projects';
@@ -21,8 +19,6 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
     return 'dashboard';
   };
 
-  const [active, setActive] = useState(getActiveId());
-
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { id: 'projects', label: 'Projects', icon: FolderOpen, path: '/dashboard/projects' },
@@ -31,8 +27,7 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
     { id: 'settings', label: 'Settings', icon: Settings, path: '/dashboard/settings' },
   ];
 
-  const handleNavClick = (id: string, path: string) => {
-    setActive(id);
+  const handleNavClick = (_id: string, path: string) => {
     navigate(path);
     onNavClick?.();
   };
@@ -47,7 +42,7 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 p-6">
         <img
-          src="public/transparent-logo.png"
+          src="/transparent-logo.png"
           alt="Shiply"
           className="h-20 w-auto mb-2"
         />
@@ -62,7 +57,7 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
             key={id}
             onClick={() => handleNavClick(id, path)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-150 font-medium bg-slate-800 ${
-              active === id
+              getActiveId() === id
                 ? 'bg-slate-800 text-white border-l-2 border-slate-400 hover:bg-slate-700'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
@@ -71,12 +66,13 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
             <span>{label}</span>
           </button>
         ))}
-        {/* filler to test scroll */}
-        <div className="h-[1200px]" />
       </nav>
       {/* Sticky Footer Section */}
       <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-4 space-y-3">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-150 font-medium bg-slate-800">
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-150 font-medium bg-slate-800"
+          onClick={() => handleNavClick('settings', '/dashboard/settings')}
+        >
           <Settings size={20} />
           <span>Preferences</span>
         </button>

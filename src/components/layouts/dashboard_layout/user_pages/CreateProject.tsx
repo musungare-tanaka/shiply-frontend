@@ -1,5 +1,5 @@
 import { useState } from "react";
-import BASE_URL from "../../../../util/util";
+import BASE_URL, { getErrorMessage } from "../../../../util/util";
 
 interface CreateProjectProps {
   onSuccess: () => void;
@@ -12,6 +12,11 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const logoutAndRedirect = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -19,6 +24,9 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("You need to log in again");
+      }
 
       const response = await fetch(`${BASE_URL}/api/projects/create-project`, {
         method: "POST",
@@ -29,7 +37,14 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
         body: JSON.stringify({ name, description })
       });
 
-      if (!response.ok) throw new Error("Failed to create project");
+      if (response.status === 401 || response.status === 403) {
+        logoutAndRedirect();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "Failed to create project"));
+      }
 
       onSuccess();
 
