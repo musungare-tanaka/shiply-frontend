@@ -56,30 +56,35 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-10 bg-white p-6 rounded-xl shadow">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+    <div className="app-card mx-auto mt-10 max-w-lg">
+      <h2 className="mb-2 text-2xl font-semibold">
         Create New Project
       </h2>
+      <p className="app-page-subtitle mt-0 mb-4">
+        Set up a project container with a clear name and optional description.
+      </p>
 
-      {error && <p className="text-red-500 mb-3">{error}</p>}
+      {error && <p className="mb-3 text-sm font-medium text-[var(--app-danger)]">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-sm text-black">Project Name *</label>
+          <label className="app-label">Project Name *</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 bg-white text-black"
+            className="app-input"
+            placeholder="e.g. shiply-api"
           />
         </div>
 
         <div>
-          <label className="text-sm text-gray-600">Description (optional)</label>
+          <label className="app-label">Description (optional)</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 min-h-[90px]  bg-white text-black"
+            className="app-input min-h-[110px]"
+            placeholder="Add a short description for your team."
           />
         </div>
 
@@ -87,7 +92,7 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
+            className="app-button-primary flex-1"
           >
             {loading ? "Creating..." : "Create Project"}
           </button>
@@ -95,7 +100,7 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-md hover:bg-gray-300 transition"
+            className="app-button-secondary flex-1"
           >
             Cancel
           </button>

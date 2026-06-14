@@ -1,30 +1,35 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, Zap, CreditCard, Settings } from 'lucide-react';
-import { logout } from '../../../util/auth';
+import { useLocation, useNavigate } from "react-router-dom";
+import { CreditCard, FolderOpen, LayoutDashboard, Settings, Zap } from "lucide-react";
+import { logout } from "../../../util/auth";
+import ThemeToggle, {
+  type DashboardTheme,
+} from "../dashboard_layout/ThemeToggle";
 
 interface SideNavProps {
   onNavClick?: () => void;
+  onToggleTheme: () => void;
+  theme: DashboardTheme;
 }
 
-const SideNav = ({ onNavClick }: SideNavProps) => {
+const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const currentPath = location.pathname;
   const getActiveId = () => {
-    if (currentPath.includes('/projects')) return 'projects';
-    if (currentPath.includes('/deployments')) return 'deployments';
-    if (currentPath.includes('/billing')) return 'billing';
-    if (currentPath.includes('/settings')) return 'settings';
-    return 'dashboard';
+    if (currentPath.includes("/projects")) return "projects";
+    if (currentPath.includes("/deployments")) return "deployments";
+    if (currentPath.includes("/billing")) return "billing";
+    if (currentPath.includes("/settings")) return "settings";
+    return "dashboard";
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { id: 'projects', label: 'Projects', icon: FolderOpen, path: '/dashboard/projects' },
-    { id: 'deployments', label: 'Deployments', icon: Zap, path: '/dashboard/deployments' },
-    { id: 'billing', label: 'Billing', icon: CreditCard, path: '/dashboard/billing' },
-    { id: 'settings', label: 'Settings', icon: Settings, path: '/dashboard/settings' },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { id: "projects", label: "Projects", icon: FolderOpen, path: "/dashboard/projects" },
+    { id: "deployments", label: "Deployments", icon: Zap, path: "/dashboard/deployments" },
+    { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
+    { id: "settings", label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ];
 
   const handleNavClick = (_id: string, path: string) => {
@@ -34,32 +39,32 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
   return (
-    <aside className="h-screen w-64 bg-slate-950 text-white border-r border-slate-800 overflow-y-auto flex flex-col">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 p-6">
+    <aside className="app-sidebar">
+      <div className="app-sidebar-header">
         <img
           src="/transparent-logo.png"
           alt="Shiply"
           className="h-20 w-auto mb-2"
         />
-        <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">
+        <p className="app-kicker">
           Hosting Platform
         </p>
       </div>
-      {/* Scrollable Navigation */}
+
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navItems.map(({ id, label, icon: Icon, path }) => (
           <button
+            type="button"
             key={id}
             onClick={() => handleNavClick(id, path)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-150 font-medium bg-slate-800 ${
+            className={`app-nav-button ${
               getActiveId() === id
-                ? 'bg-slate-800 text-white border-l-2 border-slate-400 hover:bg-slate-700'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? "app-nav-button-active"
+                : ""
             }`}
           >
             <Icon size={20} />
@@ -67,22 +72,33 @@ const SideNav = ({ onNavClick }: SideNavProps) => {
           </button>
         ))}
       </nav>
-      {/* Sticky Footer Section */}
-      <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-4 space-y-3">
+
+      <div className="app-sidebar-footer space-y-3">
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+
         <button
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-150 font-medium bg-slate-800"
-          onClick={() => handleNavClick('settings', '/dashboard/settings')}
+          type="button"
+          className="app-nav-button"
+          onClick={() => handleNavClick("settings", "/dashboard/settings")}
         >
           <Settings size={20} />
           <span>Preferences</span>
         </button>
-        <div className="px-4 py-2 bg-slate-800/30 rounded-lg border border-slate-700">
-          <p className="text-xs text-slate-400">Logged in as</p>
-          <p className="text-sm font-semibold text-white mt-1">
-            {localStorage.getItem('userEmail')}
+
+        <div className="app-user-card">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] app-muted">
+            Logged in as
+          </p>
+          <p className="mt-1 break-all text-sm font-semibold">
+            {localStorage.getItem("userEmail")}
           </p>
         </div>
-        <button className="bg-red-700 w-full py-2 rounded" onClick={handleLogout}>
+
+        <button
+          type="button"
+          className="app-button-danger w-full"
+          onClick={handleLogout}
+        >
           Logout
         </button>
       </div>

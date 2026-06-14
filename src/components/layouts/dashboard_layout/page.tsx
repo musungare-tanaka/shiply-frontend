@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import SideNav from "../side_nav/page";
 import { Routes, Route } from "react-router-dom";
@@ -9,59 +9,98 @@ import Projects from "./user_pages/Projects";
 import ManageProject from "./user_pages/ManageProject";
 import NewServicePage from "./user_pages/NewServicePage";
 import SettingsPage from "./user_pages/Settings";
+import ThemeToggle, { type DashboardTheme } from "./ThemeToggle";
+
+const DASHBOARD_THEME_STORAGE_KEY = "shiply-dashboard-theme";
+
+const getInitialTheme = (): DashboardTheme => {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  const savedTheme = window.localStorage.getItem(DASHBOARD_THEME_STORAGE_KEY);
+
+  if (savedTheme === "light" || savedTheme === "dark") {
+    return savedTheme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+};
 
 const UserLayout = () => {
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<DashboardTheme>(() => getInitialTheme());
+
+  useEffect(() => {
+    window.localStorage.setItem(DASHBOARD_THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed z-50 inset-y-0 left-0
-          transform transition-transform duration-300
-          bg-slate-950
-          ${open ? "translate-x-0" : "-translate-x-full"}
-          md:static md:translate-x-0
-        `}
-      >
-        <SideNav onNavClick={() => setOpen(false)} />
-      </div>
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile top bar */}
-        <header className="md:hidden flex items-center justify-between px-4 py-5 border-b bg-slate-900 ">
-          <button
-            onClick={() => setOpen(!open)}
-            className=" bg-gray-900 foreground-white border-white p-1 rounded-md"
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <img
-            src="/transparent-logo.png"
-            alt="Shiply"
-            className="h-8 w-auto"
+    <div className="authenticated-app" data-theme={theme}>
+      <div className="flex h-screen overflow-hidden">
+        {open && (
+          <div
+            className="fixed inset-0 z-40 md:hidden"
+            style={{ backgroundColor: "var(--app-overlay)" }}
+            onClick={() => setOpen(false)}
           />
-        </header>
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="projects/:projectId" element={<ManageProject />} />
-            <Route path="projects/:projectId/new-service" element={<NewServicePage />} />
-            <Route path="deployments" element={<Deployments />} />
-            <Route path="billing" element={<Billing />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Routes>
-        </main>
+        )}
+
+        <div
+          className={`
+            fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-out
+            ${open ? "translate-x-0" : "-translate-x-full"}
+            md:static md:translate-x-0
+          `}
+        >
+          <SideNav
+            onNavClick={() => setOpen(false)}
+            onToggleTheme={toggleTheme}
+            theme={theme}
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="app-mobile-header">
+            <div className="app-mobile-brand">
+              <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className="app-icon-button"
+                aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+              >
+                {open ? <X size={20} /> : <Menu size={20} />}
+              </button>
+              <img
+                src="/transparent-logo.png"
+                alt="Shiply"
+                className="h-8 w-auto flex-shrink-0"
+              />
+            </div>
+            <ThemeToggle compact theme={theme} onToggle={toggleTheme} />
+          </header>
+
+          <main className="app-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="projects/:projectId" element={<ManageProject />} />
+              <Route
+                path="projects/:projectId/new-service"
+                element={<NewServicePage />}
+              />
+              <Route path="deployments" element={<Deployments />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </div>
   );

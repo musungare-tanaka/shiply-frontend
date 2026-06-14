@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef } from "react";
 import BASE_URL, { getErrorMessage } from "../../../util/util";
-import { renderGoogleButton } from "../../../util/google";
+import { isGoogleIdentityEnabled, renderGoogleButton } from "../../../util/google";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,6 +18,10 @@ const Login = () => {
   // GOOGLE LOGIN
   // =======================
   useEffect(() => {
+    if (!isGoogleIdentityEnabled) {
+      return;
+    }
+
     if (googleBtnRendered.current) return;
 
     googleBtnRendered.current = true;
@@ -117,14 +121,21 @@ const Login = () => {
       </div>
 
       {/* Google Login */}
-      <div id="google-signin-button" className="flex justify-center mb-6" />
+      {isGoogleIdentityEnabled ? (
+        <>
+          <div id="google-signin-button" className="flex justify-center mb-6" />
 
-      {/* Divider */}
-      <div className="flex items-center my-6">
-        <div className="flex-1 h-px bg-gray-300" />
-        <span className="px-3 text-sm text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-300" />
-      </div>
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px bg-gray-300" />
+            <span className="px-3 text-sm text-gray-400">or</span>
+            <div className="flex-1 h-px bg-gray-300" />
+          </div>
+        </>
+      ) : (
+        <p className="mb-6 text-center text-xs text-gray-400">
+          Google sign-in is disabled locally until `VITE_GOOGLE_CLIENT_ID` is configured.
+        </p>
+      )}
 
       {/* Login Form */}
       <form className="space-y-4" onSubmit={handleSubmit}>

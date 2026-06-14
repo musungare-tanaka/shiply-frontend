@@ -86,7 +86,7 @@ export default function Projects() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-white">
+      <div className="app-loading-state">
         Loading projects...
       </div>
     );
@@ -95,29 +95,31 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Projects</h1>
-        <p className="text-slate-400">Manage and view all your projects</p>
+        <h1 className="app-page-title">Projects</h1>
+        <p className="app-page-subtitle">Manage and view all your projects</p>
       </div>
 
       <div className="flex justify-end">
         <button
+          type="button"
           onClick={() => setCreating(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+          className="app-button-primary"
         >
           Create Project
         </button>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+        <div className="app-danger-panel">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-red-200">{error}</p>
+            <p className="text-sm font-medium">{error}</p>
             <button
+              type="button"
               onClick={() => {
                 setLoading(true);
                 void fetchProjects();
               }}
-              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+              className="app-button-secondary"
             >
               Retry
             </button>
@@ -126,8 +128,8 @@ export default function Projects() {
       )}
 
       {projects.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
-          <p className="text-slate-400">No projects found yet. Create one to get started.</p>
+        <div className="app-card text-center">
+          <p className="app-muted">No projects found yet. Create one to get started.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -142,25 +144,25 @@ export default function Projects() {
 
 const ProjectCard = ({ project, onManage }: { project: ProjectSummary; onManage: () => void }) => {
   return (
-    <div className="group bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-indigo-500/50 transition-all">
+    <div className="app-card group transition-transform hover:-translate-y-0.5">
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-white truncate">
+        <h3 className="truncate text-lg font-semibold">
           {project.name}
         </h3>
         <StatusBadge status={project.status} />
       </div>
 
-      <p className="text-sm text-slate-400 mb-4 line-clamp-2">
+      <p className="app-muted mb-4 text-sm line-clamp-2">
         {project.description || "No description provided"}
       </p>
 
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-400">
-          Services: <span className="text-white font-medium">{project.serviceCount}</span>
+        <span className="app-muted text-sm">
+          Services: <span className="font-medium text-inherit">{project.serviceCount}</span>
         </span>
 
-        <button onClick={onManage} className="text-sm text-indigo-400 hover:text-indigo-300 transition">
+        <button type="button" onClick={onManage} className="app-link">
           Manage →
         </button>
       </div>
@@ -170,14 +172,14 @@ const ProjectCard = ({ project, onManage }: { project: ProjectSummary; onManage:
 
 const StatusBadge = ({ status }: { status: string }) => {
   const colors: Record<string, string> = {
-    ACTIVE: "bg-green-500/15 text-green-400 border border-green-500/20",
-    STOPPED: "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20",
-    FAILED: "bg-red-500/15 text-red-400 border border-red-500/20"
+    ACTIVE: "border border-emerald-500/25 bg-emerald-500/10 text-emerald-600",
+    STOPPED: "border border-amber-500/25 bg-amber-500/10 text-amber-600",
+    FAILED: "border border-rose-500/25 bg-rose-500/10 text-rose-500"
   };
 
   return (
     <span
-      className={`text-xs px-2 py-1 rounded-md font-medium ${colors[status] || "bg-slate-700 text-slate-300"}`}
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors[status] || "bg-[var(--app-status-muted-bg)] text-[var(--app-status-muted-text)]"}`}
     >
       {status}
     </span>

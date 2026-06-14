@@ -2,71 +2,428 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #f0ebeb;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #e6dede;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #302d2d;
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  a:hover {
-    color: #747bff;
+
+  * {
+    box-sizing: border-box;
   }
-  button {
-    background-color: #f9f9f9;
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    background: #f8fafc;
+  }
+
+  body,
+  #root {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+  }
+
+  body {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+@layer components {
+  .authenticated-app {
+    --app-bg: #f8fafc;
+    --app-bg-accent: #eef4ff;
+    --app-surface: #ffffff;
+    --app-surface-soft: #f8fbff;
+    --app-sidebar: #ffffff;
+    --app-sidebar-raised: #f8fafc;
+    --app-topbar: rgba(255, 255, 255, 0.92);
+    --app-input: #ffffff;
+    --app-text: #0f172a;
+    --app-text-muted: #475569;
+    --app-text-subtle: #64748b;
+    --app-border: #dbe4f0;
+    --app-border-strong: #cbd5e1;
+    --app-shadow-soft: 0 14px 30px rgba(15, 23, 42, 0.08);
+    --app-shadow-strong: 0 18px 40px rgba(15, 23, 42, 0.12);
+    --app-overlay: rgba(15, 23, 42, 0.45);
+    --app-accent: #2563eb;
+    --app-accent-strong: #1d4ed8;
+    --app-accent-soft: rgba(37, 99, 235, 0.12);
+    --app-danger: #dc2626;
+    --app-danger-strong: #b91c1c;
+    --app-danger-soft: rgba(220, 38, 38, 0.1);
+    --app-warning: #b45309;
+    --app-warning-text: #92400e;
+    --app-warning-soft: rgba(245, 158, 11, 0.14);
+    --app-success: #15803d;
+    --app-success-text: #166534;
+    --app-success-soft: rgba(21, 128, 61, 0.12);
+    --app-status-muted-bg: #e2e8f0;
+    --app-status-muted-text: #475569;
+    --app-nav-text: #1e293b;
+    --app-nav-hover: #f1f5f9;
+    --app-nav-active: #dbeafe;
+    --app-nav-active-text: #1d4ed8;
+    --app-ghost-hover: #eef2ff;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--app-bg) 0%, var(--app-bg-accent) 100%);
+    color: var(--app-text);
+    transition:
+      background-color 220ms ease,
+      color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .authenticated-app[data-theme="dark"] {
+    --app-bg: #020617;
+    --app-bg-accent: #0b1220;
+    --app-surface: #111c2f;
+    --app-surface-soft: #162235;
+    --app-sidebar: #081121;
+    --app-sidebar-raised: #132033;
+    --app-topbar: rgba(8, 17, 33, 0.92);
+    --app-input: #0f172a;
+    --app-text: #e2e8f0;
+    --app-text-muted: #94a3b8;
+    --app-text-subtle: #64748b;
+    --app-border: #243248;
+    --app-border-strong: #334155;
+    --app-shadow-soft: 0 18px 40px rgba(2, 6, 23, 0.45);
+    --app-shadow-strong: 0 22px 48px rgba(2, 6, 23, 0.55);
+    --app-overlay: rgba(2, 6, 23, 0.72);
+    --app-accent: #60a5fa;
+    --app-accent-strong: #3b82f6;
+    --app-accent-soft: rgba(96, 165, 250, 0.16);
+    --app-danger: #f87171;
+    --app-danger-strong: #ef4444;
+    --app-danger-soft: rgba(248, 113, 113, 0.12);
+    --app-warning: #fbbf24;
+    --app-warning-text: #fde68a;
+    --app-warning-soft: rgba(251, 191, 36, 0.16);
+    --app-success: #4ade80;
+    --app-success-text: #bbf7d0;
+    --app-success-soft: rgba(74, 222, 128, 0.12);
+    --app-status-muted-bg: #1e293b;
+    --app-status-muted-text: #cbd5e1;
+    --app-nav-text: #cbd5e1;
+    --app-nav-hover: #17263a;
+    --app-nav-active: #1d4ed8;
+    --app-nav-active-text: #eff6ff;
+    --app-ghost-hover: #172554;
+  }
+
+  .authenticated-app button,
+  .authenticated-app input,
+  .authenticated-app textarea {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .app-mobile-header {
+    @apply flex items-center justify-between gap-3 border-b px-4 py-4 md:hidden;
+    background-color: var(--app-topbar);
+    border-color: var(--app-border);
+    backdrop-filter: blur(18px);
+  }
+
+  .app-mobile-brand {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .app-icon-button {
+    @apply inline-flex items-center justify-center rounded-xl border p-2;
+    background-color: var(--app-surface);
+    border-color: var(--app-border);
+    color: var(--app-text);
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-icon-button:hover {
+    background-color: var(--app-surface-soft);
+  }
+
+  .app-content {
+    @apply flex-1 overflow-y-auto p-4 md:p-6;
+  }
+
+  .app-sidebar {
+    @apply flex h-screen w-64 flex-col overflow-y-auto border-r;
+    background-color: var(--app-sidebar);
+    border-color: var(--app-border);
+    color: var(--app-text);
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-sidebar-header,
+  .app-sidebar-footer {
+    background-color: var(--app-sidebar);
+    border-color: var(--app-border);
+    backdrop-filter: blur(18px);
+  }
+
+  .app-sidebar-header {
+    @apply sticky top-0 z-10 border-b p-6;
+  }
+
+  .app-sidebar-footer {
+    @apply sticky bottom-0 border-t p-4;
+  }
+
+  .app-kicker {
+    @apply mt-1 text-xs font-semibold uppercase tracking-[0.3em];
+    color: var(--app-text-subtle);
+  }
+
+  .app-nav-button {
+    @apply flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium;
+    background-color: var(--app-sidebar-raised);
+    border-color: transparent;
+    color: var(--app-nav-text);
+  }
+
+  .app-nav-button:hover {
+    background-color: var(--app-nav-hover);
+    border-color: var(--app-border);
+  }
+
+  .app-nav-button-active {
+    background-color: var(--app-nav-active);
+    border-color: var(--app-accent-soft);
+    color: var(--app-nav-active-text);
+    box-shadow: inset 0 0 0 1px var(--app-accent-soft);
+  }
+
+  .app-page-title {
+    @apply text-3xl font-semibold tracking-tight;
+    color: var(--app-text);
+  }
+
+  .app-page-subtitle {
+    @apply mt-2 text-sm md:text-base;
+    color: var(--app-text-muted);
+  }
+
+  .app-card {
+    @apply rounded-2xl border p-5;
+    background-color: var(--app-surface);
+    border-color: var(--app-border);
+    color: var(--app-text);
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-stat-card {
+    @apply rounded-2xl border p-4;
+    background-color: var(--app-surface);
+    border-color: var(--app-border);
+    color: var(--app-text);
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-surface-soft {
+    background-color: var(--app-surface-soft);
+  }
+
+  .app-muted {
+    color: var(--app-text-muted);
+  }
+
+  .app-link {
+    @apply text-sm font-medium;
+    color: var(--app-accent);
+  }
+
+  .app-link:hover {
+    color: var(--app-accent-strong);
+  }
+
+  .app-label {
+    @apply mb-2 block text-sm font-medium;
+    color: var(--app-text-muted);
+  }
+
+  .app-input {
+    @apply w-full rounded-xl border px-3 py-2.5 outline-none;
+    background-color: var(--app-input);
+    border-color: var(--app-border-strong);
+    color: var(--app-text);
+  }
+
+  .app-input::placeholder {
+    color: var(--app-text-subtle);
+  }
+
+  .app-input:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 4px var(--app-accent-soft);
+  }
+
+  .app-button-primary,
+  .app-button-secondary,
+  .app-button-danger,
+  .app-button-ghost,
+  .app-theme-toggle {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold;
+  }
+
+  .app-button-primary {
+    background-color: var(--app-accent);
+    border-color: var(--app-accent);
+    color: #ffffff;
+  }
+
+  .app-button-primary:hover {
+    background-color: var(--app-accent-strong);
+    border-color: var(--app-accent-strong);
+  }
+
+  .app-button-secondary {
+    background-color: var(--app-surface-soft);
+    border-color: var(--app-border);
+    color: var(--app-text);
+  }
+
+  .app-button-secondary:hover {
+    background-color: var(--app-nav-hover);
+  }
+
+  .app-button-danger {
+    background-color: var(--app-danger);
+    border-color: var(--app-danger);
+    color: #ffffff;
+  }
+
+  .app-button-danger:hover {
+    background-color: var(--app-danger-strong);
+    border-color: var(--app-danger-strong);
+  }
+
+  .app-button-ghost {
+    background-color: var(--app-surface-soft);
+    border-color: var(--app-border);
+    color: var(--app-text-muted);
+  }
+
+  .app-button-ghost:hover {
+    background-color: var(--app-ghost-hover);
+    color: var(--app-text);
+  }
+
+  .app-button-primary:disabled,
+  .app-button-secondary:disabled,
+  .app-button-danger:disabled,
+  .app-button-ghost:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .app-theme-toggle {
+    width: 100%;
+    background-color: var(--app-surface-soft);
+    border-color: var(--app-border);
+    color: var(--app-text);
+  }
+
+  .app-theme-toggle:hover {
+    background-color: var(--app-nav-hover);
+  }
+
+  .app-theme-toggle-compact {
+    width: auto;
+    padding-inline: 0.75rem;
+  }
+
+  .app-theme-toggle__icon {
+    @apply inline-flex items-center justify-center rounded-full p-1;
+    background-color: var(--app-accent-soft);
+    color: var(--app-accent);
+  }
+
+  .app-user-card {
+    @apply rounded-2xl border px-4 py-3;
+    background-color: var(--app-sidebar-raised);
+    border-color: var(--app-border);
+  }
+
+  .app-warning-panel {
+    @apply rounded-2xl border p-4;
+    background-color: var(--app-warning-soft);
+    border-color: rgba(245, 158, 11, 0.32);
+    color: var(--app-warning-text);
+  }
+
+  .authenticated-app[data-theme="dark"] .app-warning-panel {
+    border-color: rgba(251, 191, 36, 0.22);
+  }
+
+  .app-danger-panel {
+    @apply rounded-2xl border p-4;
+    background-color: var(--app-danger-soft);
+    border-color: rgba(220, 38, 38, 0.28);
+    color: var(--app-danger);
+  }
+
+  .authenticated-app[data-theme="dark"] .app-danger-panel {
+    border-color: rgba(248, 113, 113, 0.2);
+  }
+
+  .app-modal {
+    @apply rounded-2xl border p-6;
+    background-color: var(--app-surface);
+    border-color: var(--app-border);
+    color: var(--app-text);
+    box-shadow: var(--app-shadow-strong);
+  }
+
+  .app-loading-state {
+    @apply flex min-h-[60vh] items-center justify-center px-4 text-center;
+    color: var(--app-text-muted);
+  }
+
+  .app-empty-state {
+    @apply relative flex min-h-[70vh] items-center justify-center overflow-hidden rounded-[2rem] border px-6 py-12;
+    background:
+      radial-gradient(circle at top, var(--app-accent-soft), transparent 45%),
+      linear-gradient(135deg, var(--app-surface) 0%, var(--app-surface-soft) 100%);
+    border-color: var(--app-border);
+    box-shadow: var(--app-shadow-soft);
+  }
+
+  .app-empty-state-card {
+    @apply relative z-10 max-w-md text-center;
+  }
+
+  .app-empty-state-icon {
+    @apply mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border;
+    background-color: var(--app-accent-soft);
+    border-color: var(--app-border);
+    color: var(--app-accent);
   }
 }

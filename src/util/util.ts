@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "http://localhost:8087";
+const DEFAULT_API_BASE_URL = "http://localhost:9091";
 const configuredApiBaseUrl =
   import.meta.env.VITE_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL;
 

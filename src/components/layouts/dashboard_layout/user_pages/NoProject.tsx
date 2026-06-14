@@ -48,24 +48,24 @@ const AnimatedVeins = () => {
 
 const NoProject = ({ onCreate }: NoProjectProps) => {
   return (
-    <div className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+    <div className="app-empty-state">
       <AnimatedVeins />
 
       <motion.div
-        className="relative z-10 max-w-md px-6 text-center"
+        className="app-empty-state-card px-6"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="mb-6 flex justify-center">
-          <PlusCircle className="h-16 w-16 text-blue-600" strokeWidth={1.5} />
+        <div className="app-empty-state-icon">
+          <PlusCircle className="h-10 w-10" strokeWidth={1.5} />
         </div>
 
-        <h2 className="mb-3 text-3xl font-light tracking-tight text-slate-900">
+        <h2 className="mb-3 text-3xl font-light tracking-tight">
           No Projects Yet
         </h2>
 
-        <p className="mb-8 text-base text-slate-600 leading-relaxed">
+        <p className="app-muted mb-8 text-base leading-relaxed">
           Start building something remarkable. Create your first project and bring your ideas to life.
         </p>
 
@@ -73,7 +73,7 @@ const NoProject = ({ onCreate }: NoProjectProps) => {
           onClick={onCreate}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-shadow"
+          className="app-button-primary inline-flex px-6 py-3 shadow-md hover:shadow-lg"
         >
           <PlusCircle size={18} />
           Create Project

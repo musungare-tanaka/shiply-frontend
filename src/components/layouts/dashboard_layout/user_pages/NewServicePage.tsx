@@ -22,8 +22,9 @@ export default function NewServicePage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
         <button
+          type="button"
           onClick={() => navigate(`/dashboard/projects/${projectId}`)}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition"
+          className="app-button-ghost"
         >
           <ArrowLeft size={20} />
           <span>Back to Project</span>
@@ -31,9 +32,9 @@ export default function NewServicePage() {
       </div>
 
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
-          <h1 className="text-2xl font-bold text-white">Service Provisioning Coming Soon</h1>
-          <p className="text-amber-100/90 mt-3 leading-relaxed">
+        <div className="app-warning-panel p-5">
+          <h1 className="text-2xl font-bold">Service Provisioning Coming Soon</h1>
+          <p className="mt-3 leading-relaxed">
             This page stays visible in production so you can see the planned workflow, but no backend provisioning runs from here yet.
           </p>
         </div>
@@ -42,15 +43,15 @@ export default function NewServicePage() {
           {plannedServices.map(({ title, description, icon: Icon }) => (
             <div
               key={title}
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5"
+              className="app-card"
             >
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-800 p-3 text-indigo-300">
+                <div className="app-surface-soft rounded-xl border p-3 text-[var(--app-accent)]">
                   <Icon size={20} />
                 </div>
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
+                <h2 className="text-lg font-semibold">{title}</h2>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-slate-400">{description}</p>
+              <p className="app-muted mt-4 text-sm leading-relaxed">{description}</p>
             </div>
           ))}
         </div>

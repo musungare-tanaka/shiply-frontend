@@ -1,6 +1,3 @@
-const DEFAULT_GOOGLE_CLIENT_ID =
-  "356939529214-n1gum5u8ip0auuirjrl958g8g7jgap3b.apps.googleusercontent.com";
-
 let googleScriptPromise: Promise<void> | null = null;
 
 interface GoogleResponse {
@@ -34,8 +31,11 @@ declare global {
   }
 }
 
-export const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || DEFAULT_GOOGLE_CLIENT_ID;
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || "";
+
+export const isGoogleIdentityEnabled =
+  GOOGLE_CLIENT_ID.length > 0 &&
+  !GOOGLE_CLIENT_ID.includes("your-google-client-id");
 
 export const loadGoogleIdentityScript = (): Promise<void> => {
   if (window.google) {
@@ -78,6 +78,10 @@ export const renderGoogleButton = async (
   elementId: string,
   callback: (response: GoogleResponse) => void,
 ): Promise<void> => {
+  if (!isGoogleIdentityEnabled) {
+    throw new Error("Google sign-in is not configured for this environment");
+  }
+
   await loadGoogleIdentityScript();
 
   const element = document.getElementById(elementId);

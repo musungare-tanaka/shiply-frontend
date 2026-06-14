@@ -115,7 +115,7 @@ export default function ManageProject() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-white">
+      <div className="app-loading-state">
         Loading project...
       </div>
     );
@@ -123,12 +123,15 @@ export default function ManageProject() {
 
   if (!projectId || loadError || !project) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4 text-white">
+      <div className="app-loading-state">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{loadError || "Project not found"}</p>
+          <p className="mb-4 text-sm font-medium text-[var(--app-danger)]">
+            {loadError || "Project not found"}
+          </p>
           <button
+            type="button"
             onClick={() => navigate("/dashboard/projects")}
-            className="text-indigo-400 hover:text-indigo-300"
+            className="app-link"
           >
             Go back to projects
           </button>
@@ -143,8 +146,9 @@ export default function ManageProject() {
     <div className="space-y-6 px-3 sm:px-4 md:px-6 lg:px-8">
       <div className="flex flex-col gap-4">
         <button
+          type="button"
           onClick={() => navigate("/dashboard/projects")}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition text-sm sm:text-base w-fit"
+          className="app-button-ghost w-fit text-sm sm:text-base"
         >
           <ArrowLeft size={18} />
           <span className="hidden sm:inline">Back to Projects</span>
@@ -152,24 +156,26 @@ export default function ManageProject() {
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">{project.name}</h1>
-            <p className="text-slate-400 mt-2">
+            <h1 className="app-page-title">{project.name}</h1>
+            <p className="app-page-subtitle">
               {project.description || "No description provided for this project yet."}
             </p>
           </div>
 
           <div className="flex gap-2 flex-col sm:flex-row">
             <button
+              type="button"
               onClick={() => navigate(`/dashboard/projects/${projectId}/new-service`)}
-              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg transition font-medium text-sm sm:text-base"
+              className="app-button-primary"
             >
               <Plus size={18} />
               <span>New Service</span>
             </button>
             <button
+              type="button"
               onClick={() => setShowDeleteConfirm(true)}
               disabled={isDeleting}
-              className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white px-4 py-2.5 rounded-lg transition font-medium text-sm sm:text-base"
+              className="app-button-danger"
             >
               <Trash2 size={18} />
               <span>Delete</span>
@@ -184,43 +190,50 @@ export default function ManageProject() {
         <StatCard title="Last Updated" value={project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : "Not available"} />
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+      <div className="app-card space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Project Overview</h2>
-          <p className="text-slate-400 text-sm mt-1">
+          <h2 className="text-lg font-semibold">Project Overview</h2>
+          <p className="app-muted mt-1 text-sm">
             Project ownership, listing, and deletion are live. Service provisioning is still coming soon.
           </p>
         </div>
 
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-          <p className="text-amber-200 text-sm">
+        <div className="app-warning-panel">
+          <p className="text-sm">
             The <span className="font-semibold">New Service</span> flow is visible for planning purposes, but it is not connected to backend provisioning yet.
           </p>
         </div>
       </div>
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-sm">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Delete Project</h2>
-            <p className="text-slate-400 text-sm sm:text-base mb-6">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+          style={{ backgroundColor: "var(--app-overlay)" }}
+        >
+          <div className="app-modal w-full rounded-t-2xl sm:max-w-sm sm:rounded-2xl">
+            <h2 className="mb-2 text-lg font-bold sm:text-xl">Delete Project</h2>
+            <p className="app-muted mb-6 text-sm sm:text-base">
               Are you sure you want to delete this project? This action cannot be undone.
             </p>
             {deleteError && (
-              <p className="text-red-400 text-xs sm:text-sm mb-4">{deleteError}</p>
+              <p className="mb-4 text-xs font-medium text-[var(--app-danger)] sm:text-sm">
+                {deleteError}
+              </p>
             )}
             <div className="flex flex-col-reverse sm:flex-row gap-3">
               <button
+                type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800 text-white rounded-lg transition font-medium text-sm sm:text-base"
+                className="app-button-secondary flex-1"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={confirmDelete}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg transition font-medium text-sm sm:text-base"
+                className="app-button-danger flex-1"
               >
                 {isDeleting ? "Deleting..." : "Delete Project"}
               </button>
@@ -233,8 +246,8 @@ export default function ManageProject() {
 }
 
 const StatCard = ({ title, value }: { title: string; value: string | number }) => (
-  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-    <p className="text-slate-400 text-sm">{title}</p>
-    <h3 className="text-2xl font-semibold text-white mt-1">{value}</h3>
+  <div className="app-stat-card">
+    <p className="app-muted text-sm">{title}</p>
+    <h3 className="mt-1 text-2xl font-semibold">{value}</h3>
   </div>
 );

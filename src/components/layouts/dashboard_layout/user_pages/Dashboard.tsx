@@ -4,7 +4,6 @@ import NoProject from "./NoProject";
 import CreateProject from "./CreateProject";
 import type { ProjectsData } from "../../../interfaces/ProjectData";
 
-
 export default function Dashboard() {
   const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
   const [creating, setCreating] = useState(false);
@@ -105,7 +104,7 @@ export default function Dashboard() {
 
   if (isNewUser === null && !dashboardError) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center text-white">
+      <div className="app-loading-state min-h-[70vh]">
         Checking your account...
       </div>
     );
@@ -136,7 +135,7 @@ export default function Dashboard() {
 
   if (isLoadingDashboard) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center text-white">
+      <div className="app-loading-state min-h-[70vh]">
         Loading dashboard...
       </div>
     );
@@ -152,7 +151,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+      <div>
+        <h1 className="app-page-title">Dashboard</h1>
+        <p className="app-page-subtitle">
+          A quick view of your current projects, services, and plan status.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard title="Projects" value={dashboardData.totalProjects} />
@@ -164,19 +168,19 @@ export default function Dashboard() {
 }
 
 const StatCard = ({ title, value }: { title: string; value: string | number }) => (
-  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-    <p className="text-slate-400 text-sm">{title}</p>
-    <h3 className="text-2xl font-semibold text-white mt-1">{value}</h3>
+  <div className="app-stat-card">
+    <p className="app-muted text-sm">{title}</p>
+    <h3 className="mt-1 text-2xl font-semibold">{value}</h3>
   </div>
 );
 
 const ErrorState = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
   <div className="flex min-h-[70vh] items-center justify-center px-4">
-    <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-      <p className="text-sm text-red-200">{message}</p>
+    <div className="app-danger-panel w-full max-w-md text-center">
+      <p className="text-sm font-medium">{message}</p>
       <button
         onClick={onRetry}
-        className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+        className="app-button-secondary mt-4"
       >
         Try Again
       </button>
