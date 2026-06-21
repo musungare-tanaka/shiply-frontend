@@ -1,15 +1,21 @@
 import type { JSX } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { getCurrentUserRole, isAuthenticated } from "../../util/auth";
 
 interface ProtectedRouteProps {
   children: JSX.Element;
+  requiredRole?: string;
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const token = localStorage.getItem("token");
+const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+  const location = useLocation();
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (requiredRole && getCurrentUserRole() !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

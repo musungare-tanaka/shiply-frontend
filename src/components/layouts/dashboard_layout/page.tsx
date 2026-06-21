@@ -9,7 +9,9 @@ import Projects from "./user_pages/Projects";
 import ManageProject from "./user_pages/ManageProject";
 import NewServicePage from "./user_pages/NewServicePage";
 import SettingsPage from "./user_pages/Settings";
+import UserManagementPage from "./user_pages/UserManagement";
 import ThemeToggle, { type DashboardTheme } from "./ThemeToggle";
+import ProtectedRoute from "../../protectedRoutes/page";
 
 const DASHBOARD_THEME_STORAGE_KEY = "shiply-dashboard-theme";
 
@@ -98,6 +100,14 @@ const UserLayout = () => {
               <Route path="deployments" element={<Deployments />} />
               <Route path="billing" element={<Billing />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="admin/users"
+                element={(
+                  <ProtectedRoute requiredRole="ADMIN">
+                    <UserManagementPage />
+                  </ProtectedRoute>
+                )}
+              />
             </Routes>
           </main>
         </div>

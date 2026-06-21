@@ -2,6 +2,9 @@ import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef } from "react";
 import BASE_URL, { getErrorMessage } from "../../../util/util";
 import { isGoogleIdentityEnabled, renderGoogleButton } from "../../../util/google";
+import { setAuthSession } from "../../../util/auth";
+import AuthShell from "../AuthShell";
+import PasswordField from "../PasswordField";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -45,10 +48,7 @@ const Login = () => {
 
         const data = await res.json();
 
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userEmail", data.user.email);
-        localStorage.setItem("userRole", data.user.role);
-
+        setAuthSession(data);
         navigate("/dashboard");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Google login failed");
@@ -87,10 +87,7 @@ const Login = () => {
 
       const data = await response.json();
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userEmail", data.user.email);
-      localStorage.setItem("userRole", data.user.role);
-
+      setAuthSession(data);
       navigate("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -100,27 +97,21 @@ const Login = () => {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-      {/* Company Logo */}
-      <div className="flex justify-center mb-6">
-        <img
-          src="/shiply-logo.png"
-          alt="Shiply Logo"
-          className="h-20 w-30"
-        />
-      </div>
-
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-[#474b4f]">
-          Login to your Shiply account
-        </h1>
-        <p className="text-gray-500 mt-2 text-sm">
-          Start deploying your apps in minutes
+    <AuthShell
+      title="Login to your Shiply account"
+      subtitle="Start deploying your apps in minutes"
+      footer={
+        <p className="text-center text-sm text-gray-500">
+          Don't have an account?{" "}
+          <Link
+            to="/signup"
+            className="text-[#474b4f] font-medium hover:underline"
+          >
+            Sign up
+          </Link>
         </p>
-      </div>
-
-      {/* Google Login */}
+      }
+    >
       {isGoogleIdentityEnabled ? (
         <>
           <div id="google-signin-button" className="flex justify-center mb-6" />
@@ -137,7 +128,6 @@ const Login = () => {
         </p>
       )}
 
-      {/* Login Form */}
       <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
           <p className="text-red-500 text-sm text-center">{error}</p>
@@ -156,17 +146,21 @@ const Login = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-600">
-            Password
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md text-black bg-white border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#474b4f]"
-          />
+        <PasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          required
+          autoComplete="current-password"
+        />
+
+        <div className="flex justify-end">
+          <Link
+            to="/forgot-password"
+            className="text-sm font-medium text-[#474b4f] hover:underline"
+          >
+            Forgot Password?
+          </Link>
         </div>
 
         <button
@@ -177,18 +171,7 @@ const Login = () => {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
-
-      {/* Signup link */}
-      <p className="text-center text-sm text-gray-500 mt-6">
-        Don't have an account?{" "}
-        <Link
-          to="/signup"
-          className="text-[#474b4f] font-medium hover:underline"
-        >
-          Sign up
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   );
 };
 

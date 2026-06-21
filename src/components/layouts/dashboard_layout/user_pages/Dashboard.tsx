@@ -3,6 +3,7 @@ import BASE_URL, { getErrorMessage } from "../../../../util/util";
 import NoProject from "./NoProject";
 import CreateProject from "./CreateProject";
 import type { ProjectsData } from "../../../interfaces/ProjectData";
+import { getCurrentUserFullName, getCurrentUserRole, getCurrentUserStatus, logout } from "../../../../util/auth";
 
 export default function Dashboard() {
   const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
@@ -13,7 +14,7 @@ export default function Dashboard() {
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
   const logoutAndRedirect = () => {
-    localStorage.removeItem("token");
+    logout();
     window.location.href = "/login";
   };
 
@@ -155,6 +156,15 @@ export default function Dashboard() {
         <h1 className="app-page-title">Dashboard</h1>
         <p className="app-page-subtitle">
           A quick view of your current projects, services, and plan status.
+        </p>
+      </div>
+
+      <div className="app-card">
+        <p className="text-lg font-semibold">
+          {getCurrentUserFullName() || "Welcome back"}
+        </p>
+        <p className="app-muted mt-2 text-sm">
+          Role: {getCurrentUserRole() || "USER"} • Account status: {getCurrentUserStatus() || "ACTIVE"}
         </p>
       </div>
 

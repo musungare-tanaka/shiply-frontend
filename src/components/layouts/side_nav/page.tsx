@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { CreditCard, FolderOpen, LayoutDashboard, Settings, Zap } from "lucide-react";
-import { logout } from "../../../util/auth";
+import { CreditCard, FolderOpen, LayoutDashboard, Settings, Shield, Zap } from "lucide-react";
+import { getCurrentUserEmail, getCurrentUserFullName, isAdmin, logout } from "../../../util/auth";
 import ThemeToggle, {
   type DashboardTheme,
 } from "../dashboard_layout/ThemeToggle";
@@ -16,10 +16,12 @@ const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
   const location = useLocation();
 
   const currentPath = location.pathname;
+  const admin = isAdmin();
   const getActiveId = () => {
     if (currentPath.includes("/projects")) return "projects";
     if (currentPath.includes("/deployments")) return "deployments";
     if (currentPath.includes("/billing")) return "billing";
+    if (currentPath.includes("/admin/users")) return "user-management";
     if (currentPath.includes("/settings")) return "settings";
     return "dashboard";
   };
@@ -29,6 +31,9 @@ const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
     { id: "projects", label: "Projects", icon: FolderOpen, path: "/dashboard/projects" },
     { id: "deployments", label: "Deployments", icon: Zap, path: "/dashboard/deployments" },
     { id: "billing", label: "Billing", icon: CreditCard, path: "/dashboard/billing" },
+    ...(admin
+      ? [{ id: "user-management", label: "User Management", icon: Shield, path: "/dashboard/admin/users" }]
+      : []),
     { id: "settings", label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ];
 
@@ -89,8 +94,11 @@ const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] app-muted">
             Logged in as
           </p>
+          <p className="mt-1 text-sm font-semibold">
+            {getCurrentUserFullName() || "Shiply User"}
+          </p>
           <p className="mt-1 break-all text-sm font-semibold">
-            {localStorage.getItem("userEmail")}
+            {getCurrentUserEmail()}
           </p>
         </div>
 
