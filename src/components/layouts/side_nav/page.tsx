@@ -53,14 +53,14 @@ const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
         <img
           src="/transparent-logo.png"
           alt="Shiply"
-          className="h-20 w-auto mb-2"
+          className="mb-2 h-16 w-auto sm:h-20"
         />
         <p className="app-kicker">
           Hosting Platform
         </p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 space-y-2 overflow-y-auto p-3 sm:p-4">
         {navItems.map(({ id, label, icon: Icon, path }) => (
           <button
             type="button"

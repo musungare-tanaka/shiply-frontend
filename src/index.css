@@ -149,7 +149,7 @@
   }
 
   .app-mobile-header {
-    @apply flex items-center justify-between gap-3 border-b px-4 py-4 md:hidden;
+    @apply sticky top-0 z-30 flex items-center justify-between gap-3 border-b px-3 py-3 md:hidden;
     background-color: var(--app-topbar);
     border-color: var(--app-border);
     backdrop-filter: blur(18px);
@@ -172,11 +172,11 @@
   }
 
   .app-content {
-    @apply flex-1 overflow-y-auto p-4 md:p-6;
+    @apply flex-1 overflow-y-auto px-3 py-4 sm:px-4 md:p-6;
   }
 
   .app-sidebar {
-    @apply flex h-screen w-64 flex-col overflow-y-auto border-r;
+    @apply flex h-screen w-[min(88vw,18rem)] flex-col overflow-y-auto border-r md:w-64;
     background-color: var(--app-sidebar);
     border-color: var(--app-border);
     color: var(--app-text);
@@ -191,7 +191,7 @@
   }
 
   .app-sidebar-header {
-    @apply sticky top-0 z-10 border-b p-6;
+    @apply sticky top-0 z-10 border-b px-4 py-5 md:p-6;
   }
 
   .app-sidebar-footer {
@@ -223,7 +223,7 @@
   }
 
   .app-page-title {
-    @apply text-3xl font-semibold tracking-tight;
+    @apply text-2xl font-semibold tracking-tight sm:text-3xl;
     color: var(--app-text);
   }
 
@@ -233,7 +233,7 @@
   }
 
   .app-card {
-    @apply rounded-2xl border p-5;
+    @apply rounded-2xl border p-4 sm:p-5;
     background-color: var(--app-surface);
     border-color: var(--app-border);
     color: var(--app-text);
@@ -291,7 +291,7 @@
   .app-button-danger,
   .app-button-ghost,
   .app-theme-toggle {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold;
   }
 
   .app-button-primary {
@@ -395,7 +395,7 @@
   }
 
   .app-modal {
-    @apply rounded-2xl border p-6;
+    @apply max-h-[min(88vh,48rem)] overflow-y-auto rounded-2xl border p-4 sm:p-6;
     background-color: var(--app-surface);
     border-color: var(--app-border);
     color: var(--app-text);
@@ -408,7 +408,7 @@
   }
 
   .app-empty-state {
-    @apply relative flex min-h-[70vh] items-center justify-center overflow-hidden rounded-[2rem] border px-6 py-12;
+    @apply relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[2rem] border px-4 py-10 sm:px-6 sm:py-12;
     background:
       radial-gradient(circle at top, var(--app-accent-soft), transparent 45%),
       linear-gradient(135deg, var(--app-surface) 0%, var(--app-surface-soft) 100%);
@@ -421,9 +421,21 @@
   }
 
   .app-empty-state-icon {
-    @apply mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border;
+    @apply mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border sm:mb-6 sm:h-20 sm:w-20;
     background-color: var(--app-accent-soft);
     border-color: var(--app-border);
     color: var(--app-accent);
+  }
+
+  .app-mobile-stack {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .app-mobile-actions {
+    @apply flex w-full flex-col gap-3 sm:w-auto sm:flex-row;
+  }
+
+  .app-mobile-actions > * {
+    @apply w-full sm:w-auto;
   }
 }

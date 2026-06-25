@@ -1,21 +1,16 @@
+import { Loader2, X } from "lucide-react";
 import { useState } from "react";
-import BASE_URL, { getErrorMessage } from "../../../../util/util";
+import { createProject } from "../../../../lib/api";
 
 interface CreateProjectProps {
-  onSuccess: () => void;
+  onSuccess: (projectId: string) => void;
   onCancel: () => void;
 }
 
 const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const logoutAndRedirect = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,31 +18,14 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You need to log in again");
-      }
-
-      const response = await fetch(`${BASE_URL}/api/projects/create-project`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name, description })
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        logoutAndRedirect();
+      const normalizedName = name.trim();
+      if (!normalizedName) {
+        setError("Project name is required");
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(await getErrorMessage(response, "Failed to create project"));
-      }
-
-      onSuccess();
-
+      const project = await createProject({ name: normalizedName });
+      onSuccess(project.id);
     } catch (err) {
       setError(`Could not create project: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
@@ -56,56 +34,60 @@ const CreateProject = ({ onSuccess, onCancel }: CreateProjectProps) => {
   };
 
   return (
-    <div className="app-card mx-auto mt-10 max-w-lg">
-      <h2 className="mb-2 text-2xl font-semibold">
-        Create New Project
-      </h2>
-      <p className="app-page-subtitle mt-0 mb-4">
-        Set up a project container with a clear name and optional description.
-      </p>
-
-      {error && <p className="mb-3 text-sm font-medium text-[var(--app-danger)]">{error}</p>}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="app-label">Project Name *</label>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="app-input"
-            placeholder="e.g. shiply-api"
-          />
-        </div>
-
-        <div>
-          <label className="app-label">Description (optional)</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="app-input min-h-[110px]"
-            placeholder="Add a short description for your team."
-          />
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="app-button-primary flex-1"
-          >
-            {loading ? "Creating..." : "Create Project"}
-          </button>
-
-          <button
-            type="button"
-            onClick={onCancel}
-            className="app-button-secondary flex-1"
-          >
-            Cancel
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+      onClick={onCancel}
+    >
+      <div
+        className="app-modal w-full max-w-lg rounded-[1.5rem] sm:rounded-[1.75rem]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold sm:text-2xl">Create New Project</h2>
+            <p className="app-page-subtitle mt-2">
+              Add a project container, then attach application and database services inside it.
+            </p>
+          </div>
+          <button type="button" onClick={onCancel} className="app-button-ghost !px-3 !py-3">
+            <X size={18} />
           </button>
         </div>
-      </form>
+
+        {error && <p className="mb-4 text-sm font-medium text-[var(--app-danger)]">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="app-label">Project Name *</label>
+            <input
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="app-input"
+              placeholder="e.g. school-management-system"
+            />
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="app-button-secondary flex-1"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="app-button-primary flex-1"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+              <span>Create Project</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
