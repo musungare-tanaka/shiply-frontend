@@ -34,6 +34,14 @@ export interface DatabaseServiceConfig {
 export interface ApplicationServiceConfig {
   repositoryUrl: string;
   branch: string;
+  repositoryProvider: string;
+  githubInstallationId?: number | null;
+  githubRepositoryId?: number | null;
+  repositoryOwner?: string | null;
+  repositoryName?: string | null;
+  defaultBranch?: string | null;
+  autoDeployEnabled: boolean;
+  repositoryAccessRevoked: boolean;
   linkedDatabaseServiceId?: string | null;
   linkedDatabaseServiceName?: string | null;
 }
@@ -50,7 +58,51 @@ export interface CreateDatabaseServiceInput {
 
 export interface CreateApplicationServiceInput {
   name: string;
-  repositoryUrl: string;
+  repositoryUrl?: string | null;
   branch?: string | null;
+  linkedDatabaseServiceId?: string | null;
+  githubInstallationId?: number | null;
+  githubRepositoryId?: number | null;
+  repositoryOwner?: string | null;
+  repositoryName?: string | null;
+  defaultBranch?: string | null;
+  autoDeployEnabled?: boolean | null;
+}
+
+export interface GitHubRepository {
+  repositoryId: number;
+  installationId: number;
+  owner: string;
+  name: string;
+  fullName: string;
+  cloneUrl: string;
+  defaultBranch: string;
+  privateRepository: boolean;
+}
+
+export interface GitHubBranch {
+  name: string;
+  sha: string;
+}
+
+export interface GitHubInstallationLinkResponse {
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  status: string;
+  repositories: GitHubRepository[];
+}
+
+export interface GitHubInstallUrlResponse {
+  url: string;
+}
+
+export interface GitHubProjectImportInput {
+  projectName: string;
+  serviceName: string;
+  installationId: number;
+  repositoryId: number;
+  branch: string;
+  autoDeploy: boolean;
   linkedDatabaseServiceId?: string | null;
 }

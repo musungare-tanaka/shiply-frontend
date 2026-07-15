@@ -3,6 +3,11 @@ import type {
   CreateApplicationServiceInput,
   CreateDatabaseServiceInput,
   CreateProjectInput,
+  GitHubBranch,
+  GitHubInstallUrlResponse,
+  GitHubInstallationLinkResponse,
+  GitHubProjectImportInput,
+  GitHubRepository,
   Project,
   Service,
 } from "./types";
@@ -101,6 +106,44 @@ export const createApplicationService = (projectId: string, input: CreateApplica
     method: "POST",
     headers: buildHeaders(),
     body: JSON.stringify(input),
+  });
+
+export const getGitHubInstallUrl = () =>
+  request<GitHubInstallUrlResponse>("/api/integrations/github/install-url", {
+    headers: buildHeaders(),
+  });
+
+export const linkGitHubInstallation = (installationId: number, setupAction?: string | null) =>
+  request<GitHubInstallationLinkResponse>("/api/integrations/github/installations", {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({
+      installationId,
+      setupAction: setupAction || undefined,
+    }),
+  });
+
+export const getGitHubRepositories = () =>
+  request<GitHubRepository[]>("/api/integrations/github/repositories", {
+    headers: buildHeaders(),
+  });
+
+export const getGitHubBranches = (repositoryId: number) =>
+  request<GitHubBranch[]>(`/api/integrations/github/repositories/${repositoryId}/branches`, {
+    headers: buildHeaders(),
+  });
+
+export const importGitHubProject = (input: GitHubProjectImportInput) =>
+  request<Project>("/api/integrations/github/projects/import", {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify(input),
+  });
+
+export const unlinkGitHubInstallation = (installationId: number) =>
+  request<void>(`/api/integrations/github/installations/${installationId}`, {
+    method: "DELETE",
+    headers: buildHeaders(),
   });
 
 export const linkApplicationToDatabase = (appServiceId: string, dbServiceId: string) =>

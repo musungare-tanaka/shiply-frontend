@@ -9,6 +9,7 @@ import VerifyResetOtp from "./components/auth/verify-reset-otp/page";
 import ResetPassword from "./components/auth/reset-password/page";
 import ProtectedRoute from "./components/protectedRoutes/page";
 import UserLayout from "./components/layouts/dashboard_layout/page";
+import GitHubImportPage from "./components/github/GitHubImportPage";
 
 function AppContent() {
   const location = useLocation();
@@ -45,6 +46,14 @@ function AppContent() {
               
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/projects/import/github"
+          element={(
+            <ProtectedRoute>
+              <GitHubImportPage />
+            </ProtectedRoute>
+          )}
         />
       </Routes>
     </div>

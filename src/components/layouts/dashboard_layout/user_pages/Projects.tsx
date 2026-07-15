@@ -56,6 +56,13 @@ export default function Projects() {
       <div className="app-mobile-actions justify-end">
         <button
           type="button"
+          onClick={() => navigate("/projects/import/github")}
+          className="app-button-secondary"
+        >
+          Import GitHub
+        </button>
+        <button
+          type="button"
           onClick={() => setCreating(true)}
           className="app-button-primary"
         >

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef } from "react";
 import BASE_URL, { getErrorMessage } from "../../../util/util";
 import { isGoogleIdentityEnabled, renderGoogleButton } from "../../../util/google";
@@ -8,11 +8,20 @@ import PasswordField from "../PasswordField";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  const resolveRedirectPath = () => {
+    const state = location.state as { from?: { pathname?: string; search?: string } } | null;
+    if (state?.from?.pathname) {
+      return `${state.from.pathname}${state.from.search || ""}`;
+    }
+    return "/dashboard";
+  };
 
   // Prevent multiple Google button renders
   const googleBtnRendered = useRef(false);
@@ -49,7 +58,7 @@ const Login = () => {
         const data = await res.json();
 
         setAuthSession(data);
-        navigate("/dashboard");
+        navigate(resolveRedirectPath(), { replace: true });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Google login failed");
       } finally {
@@ -88,7 +97,7 @@ const Login = () => {
       const data = await response.json();
 
       setAuthSession(data);
-      navigate("/dashboard");
+      navigate(resolveRedirectPath(), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

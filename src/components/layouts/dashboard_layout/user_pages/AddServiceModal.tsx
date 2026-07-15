@@ -104,7 +104,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       if (!applicationInput.name.trim()) {
         nextErrors.applicationName = "Application service name is required";
       }
-      if (!applicationInput.repositoryUrl.trim()) {
+      if (!(applicationInput.repositoryUrl || "").trim()) {
         nextErrors.repositoryUrl = "Repository URL is required";
       }
     }
@@ -138,7 +138,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         await createApplicationService(project.id, {
           ...applicationInput,
           name: applicationInput.name.trim(),
-          repositoryUrl: applicationInput.repositoryUrl.trim(),
+          repositoryUrl: (applicationInput.repositoryUrl || "").trim(),
           branch: applicationInput.branch?.trim() || "main",
           linkedDatabaseServiceId: applicationInput.linkedDatabaseServiceId || null,
         });
@@ -158,7 +158,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         await createApplicationService(project.id, {
           ...applicationInput,
           name: applicationInput.name.trim(),
-          repositoryUrl: applicationInput.repositoryUrl.trim(),
+          repositoryUrl: (applicationInput.repositoryUrl || "").trim(),
           branch: applicationInput.branch?.trim() || "main",
           linkedDatabaseServiceId: createdDatabase.id,
         });
@@ -351,7 +351,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                     <div className="relative">
                       <GitBranch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
                       <input
-                        value={applicationInput.repositoryUrl}
+                        value={applicationInput.repositoryUrl || ""}
                         onChange={(event) => setApplicationInput((current) => ({ ...current, repositoryUrl: event.target.value }))}
                         className="app-input pl-10"
                         placeholder="https://github.com/user/repo"
@@ -440,7 +440,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                 <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4">
                   <p className="text-sm font-semibold">Application</p>
                   <p className="mt-2 text-sm">{applicationInput.name}</p>
-                  <p className="app-muted mt-2 break-all text-sm">{applicationInput.repositoryUrl}</p>
+                  <p className="app-muted mt-2 break-all text-sm">{applicationInput.repositoryUrl || ""}</p>
                   <p className="app-muted mt-2 text-sm">Branch: {applicationInput.branch || "main"}</p>
                   <p className="app-muted mt-2 text-sm">
                     {mode === "BOTH"
