@@ -1,11 +1,14 @@
 import { getAuthToken, logout } from "../util/auth";
 import type {
+  GitHubInstallationConnection,
   CreateApplicationServiceInput,
   CreateDatabaseServiceInput,
   CreateProjectInput,
+  GitHubRepositoryAnalysis,
   GitHubBranch,
   GitHubInstallUrlResponse,
   GitHubInstallationLinkResponse,
+  GitHubRepositoryPage,
   GitHubProjectImportInput,
   GitHubRepository,
   Project,
@@ -128,8 +131,41 @@ export const getGitHubRepositories = () =>
     headers: buildHeaders(),
   });
 
+export const getGitHubInstallations = () =>
+  request<GitHubInstallationConnection[]>("/api/integrations/github/installations", {
+    headers: buildHeaders(),
+  });
+
+export const getGitHubRepositoriesByInstallation = (installationId: number, query = "", page = 0, size = 20) =>
+  request<GitHubRepositoryPage>(
+    `/api/integrations/github/repositories?installationId=${installationId}&query=${encodeURIComponent(query)}&page=${page}&size=${size}`,
+    {
+      headers: buildHeaders(),
+    },
+  );
+
 export const getGitHubBranches = (repositoryId: number) =>
   request<GitHubBranch[]>(`/api/integrations/github/repositories/${repositoryId}/branches`, {
+    headers: buildHeaders(),
+  });
+
+export const analyzeGitHubRepository = (repositoryId: number, branch?: string | null, applicationRootDirectory?: string | null) => {
+  const params = new URLSearchParams();
+  if (branch?.trim()) {
+    params.set("branch", branch.trim());
+  }
+  if (applicationRootDirectory?.trim()) {
+    params.set("applicationRootDirectory", applicationRootDirectory.trim());
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request<GitHubRepositoryAnalysis>(`/api/integrations/github/repositories/${repositoryId}/analysis${suffix}`, {
+    headers: buildHeaders(),
+  });
+};
+
+export const refreshGitHubInstallation = (installationId: number) =>
+  request<GitHubInstallationConnection>(`/api/integrations/github/installations/${installationId}/refresh`, {
+    method: "POST",
     headers: buildHeaders(),
   });
 

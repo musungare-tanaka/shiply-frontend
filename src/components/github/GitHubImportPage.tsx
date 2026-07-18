@@ -10,6 +10,8 @@ import {
 } from "../../lib/api";
 import type { GitHubBranch, GitHubInstallationLinkResponse, GitHubRepository } from "../../lib/types";
 
+const GITHUB_RETURN_TO_KEY = "shiply.github.returnTo";
+
 const GitHubImportPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,6 +51,14 @@ const GitHubImportPage = () => {
             setSelectedBranch(linked.repositories[0].defaultBranch);
             setProjectName(linked.repositories[0].name);
             setServiceName(linked.repositories[0].name);
+          }
+          const returnTo = window.localStorage.getItem(GITHUB_RETURN_TO_KEY);
+          if (returnTo) {
+            window.localStorage.removeItem(GITHUB_RETURN_TO_KEY);
+            const separator = returnTo.includes("?") ? "&" : "?";
+            const target = returnTo.includes("addService=1") ? returnTo : `${returnTo}${separator}addService=1`;
+            navigate(target, { replace: true });
+            return;
           }
           navigate(location.pathname, { replace: true });
           return;

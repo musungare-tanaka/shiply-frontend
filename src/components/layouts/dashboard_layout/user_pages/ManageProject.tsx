@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Layers, Plus, Settings } from "lucide-react";
 import { getProject } from "../../../../lib/api";
 import type { Project, Service } from "../../../../lib/types";
@@ -11,6 +11,7 @@ import ServiceSettingsModal from "./ServiceSettingsModal";
 export default function ManageProject() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,6 +40,13 @@ export default function ManageProject() {
   useEffect(() => {
     void fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    if (query.get("addService") === "1") {
+      setShowAddService(true);
+    }
+  }, [location.search]);
 
   if (isLoading) {
     return (

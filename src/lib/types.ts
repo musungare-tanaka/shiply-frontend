@@ -40,10 +40,22 @@ export interface ApplicationServiceConfig {
   repositoryOwner?: string | null;
   repositoryName?: string | null;
   defaultBranch?: string | null;
+  applicationRootDirectory?: string | null;
+  runtimeTemplate?: string | null;
+  buildCommand?: string | null;
+  startCommand?: string | null;
+  exposedPort?: number | null;
+  environmentVariables?: ApplicationEnvironmentVariable[];
   autoDeployEnabled: boolean;
   repositoryAccessRevoked: boolean;
   linkedDatabaseServiceId?: string | null;
   linkedDatabaseServiceName?: string | null;
+}
+
+export interface ApplicationEnvironmentVariable {
+  key: string;
+  value?: string | null;
+  secret: boolean;
 }
 
 export interface CreateProjectInput {
@@ -66,18 +78,27 @@ export interface CreateApplicationServiceInput {
   repositoryOwner?: string | null;
   repositoryName?: string | null;
   defaultBranch?: string | null;
+  applicationRootDirectory?: string | null;
+  runtimeTemplate?: string | null;
+  buildCommand?: string | null;
+  startCommand?: string | null;
+  exposedPort?: number | null;
+  environmentVariables?: ApplicationEnvironmentVariable[] | null;
   autoDeployEnabled?: boolean | null;
 }
 
 export interface GitHubRepository {
   repositoryId: number;
   installationId: number;
+  installationAccountLogin: string;
+  installationAccountType: string;
   owner: string;
   name: string;
   fullName: string;
   cloneUrl: string;
   defaultBranch: string;
   privateRepository: boolean;
+  visibility: string;
 }
 
 export interface GitHubBranch {
@@ -91,6 +112,32 @@ export interface GitHubInstallationLinkResponse {
   accountType: string;
   status: string;
   repositories: GitHubRepository[];
+}
+
+export interface GitHubInstallationConnection {
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  status: string;
+  repositoryCount: number;
+  lastRepositorySyncAt?: string | null;
+  reconnectRequired: boolean;
+}
+
+export interface GitHubRepositoryPage {
+  items: GitHubRepository[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export interface GitHubRepositoryAnalysis {
+  branch: string;
+  applicationRootDirectory: string;
+  visibleEntries: string[];
+  detectedProjectTypes: string[];
 }
 
 export interface GitHubInstallUrlResponse {
