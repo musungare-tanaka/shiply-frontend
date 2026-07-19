@@ -159,6 +159,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [branches, setBranches] = useState<GitHubBranch[]>([]);
   const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null);
+  const [selectedRepositoryDetails, setSelectedRepositoryDetails] = useState<GitHubRepository | null>(null);
   const [repositoryQuery, setRepositoryQuery] = useState("");
   const [repositoryPage, setRepositoryPage] = useState(0);
   const [repositoryHasNext, setRepositoryHasNext] = useState(false);
@@ -167,7 +168,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const selectedDatabaseType = databaseTypeMeta[databaseInput.databaseType];
   const draftKey = buildDraftKey(project.id);
 
-  const selectedRepository = repositories.find((repository) => repository.repositoryId === selectedRepositoryId) || null;
+  const selectedRepository = repositories.find((repository) => repository.repositoryId === selectedRepositoryId)
+    || selectedRepositoryDetails;
   const supportsGitHub = mode === "APPLICATION" || mode === "BOTH";
 
   useEffect(() => {
@@ -260,9 +262,16 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
         setRepositories(page.items);
         setRepositoryHasNext(page.hasNext);
-        if (page.items.length > 0 && !page.items.some((repository) => repository.repositoryId === selectedRepositoryId)) {
+        const matchingRepository = selectedRepositoryId
+          ? page.items.find((repository) => repository.repositoryId === selectedRepositoryId) || null
+          : null;
+
+        if (matchingRepository) {
+          setSelectedRepositoryDetails(matchingRepository);
+        } else if (!selectedRepositoryId && page.items.length > 0) {
           const firstRepository = page.items[0];
           setSelectedRepositoryId(firstRepository.repositoryId);
+          setSelectedRepositoryDetails(firstRepository);
           setApplicationInput((current) => ({
             ...current,
             githubInstallationId: firstRepository.installationId,
@@ -367,6 +376,22 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       cancelled = true;
     };
   }, [applicationInput.applicationRootDirectory, applicationInput.branch, applicationInput.runtimeTemplate, repositorySource, selectedRepositoryId]);
+
+  useEffect(() => {
+    if (!selectedRepository) {
+      return;
+    }
+
+    setApplicationInput((current) => ({
+      ...current,
+      githubInstallationId: selectedRepository.installationId,
+      githubRepositoryId: selectedRepository.repositoryId,
+      repositoryOwner: selectedRepository.owner,
+      repositoryName: selectedRepository.name,
+      defaultBranch: selectedRepository.defaultBranch,
+      repositoryUrl: selectedRepository.cloneUrl,
+    }));
+  }, [selectedRepository]);
 
   const validateStepTwo = () => {
     const nextErrors: Record<string, string> = {};
@@ -733,6 +758,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                                   type="button"
                                   onClick={() => {
                                     setSelectedInstallationId(installation.installationId);
+                                    setSelectedRepositoryId(null);
+                                    setSelectedRepositoryDetails(null);
                                     setRepositoryPage(0);
                                   }}
                                   className={`w-full rounded-2xl border p-4 text-left ${
@@ -793,6 +820,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                                   type="button"
                                   onClick={() => {
                                     setSelectedRepositoryId(repository.repositoryId);
+                                    setSelectedRepositoryDetails(repository);
                                     setApplicationInput((current) => ({
                                       ...current,
                                       githubInstallationId: repository.installationId,
