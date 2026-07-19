@@ -16,7 +16,8 @@ import {
   TableProperties,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeGitHubRepository,
   createApplicationService,
@@ -108,9 +109,11 @@ interface DraftPayload {
   repositorySource: RepositorySource;
   selectedInstallationId: number | null;
   selectedRepositoryId: number | null;
+  selectedRepositoryDetails: GitHubRepository | null;
 }
 
 const buildDraftKey = (projectId: string) => `${GITHUB_DRAFT_PREFIX}${projectId}`;
+const GITHUB_STALE_SELECTION_MESSAGE = "The selected GitHub repository is no longer available. Choose another repository or reconnect GitHub.";
 
 const defaultApplicationInput: CreateApplicationServiceInput = {
   name: "",
@@ -133,6 +136,7 @@ const defaultApplicationInput: CreateApplicationServiceInput = {
 
 const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) => {
   const { showToast } = useToast();
+  const repositoryButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const databaseServices = useMemo(
     () => (project.services || []).filter((service) => service.type === "DATABASE"),
     [project.services],
@@ -160,6 +164,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null);
   const [selectedRepositoryDetails, setSelectedRepositoryDetails] = useState<GitHubRepository | null>(null);
+  const [shouldAutoSelectRepository, setShouldAutoSelectRepository] = useState(true);
   const [repositoryQuery, setRepositoryQuery] = useState("");
   const [repositoryPage, setRepositoryPage] = useState(0);
   const [repositoryHasNext, setRepositoryHasNext] = useState(false);
@@ -171,6 +176,121 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const selectedRepository = repositories.find((repository) => repository.repositoryId === selectedRepositoryId)
     || selectedRepositoryDetails;
   const supportsGitHub = mode === "APPLICATION" || mode === "BOTH";
+
+  const getRepositoryCloneUrl = (repository: GitHubRepository | null) => repository?.cloneUrl?.trim() || "";
+
+  const isRepositorySelectionStaleMessage = (message: string) => {
+    const normalized = message.trim().toLowerCase();
+    return normalized.includes("no longer available")
+      || normalized.includes("not linked")
+      || normalized.includes("repository not found")
+      || normalized.includes("reconnect github")
+      || normalized.includes("refresh or reconnect");
+  };
+
+  const clearGitHubSelection = (options?: { preserveRepositoryUrl?: boolean; disableAutoSelect?: boolean }) => {
+    setShouldAutoSelectRepository(options?.disableAutoSelect === false);
+    setSelectedRepositoryId(null);
+    setSelectedRepositoryDetails(null);
+    setBranches([]);
+    setDetectedProjectTypes([]);
+    setVisibleEntries([]);
+    setApplicationInput((current) => ({
+      ...current,
+      repositoryUrl: options?.preserveRepositoryUrl ? current.repositoryUrl : "",
+      branch: "main",
+      githubInstallationId: null,
+      githubRepositoryId: null,
+      repositoryOwner: null,
+      repositoryName: null,
+      defaultBranch: null,
+      autoDeployEnabled: false,
+    }));
+  };
+
+  const applyRepositorySelection = (repository: GitHubRepository) => {
+    const cloneUrl = getRepositoryCloneUrl(repository);
+    setShouldAutoSelectRepository(true);
+    setSelectedRepositoryId(repository.repositoryId);
+    setSelectedRepositoryDetails(repository);
+    setApplicationInput((current) => ({
+      ...current,
+      githubInstallationId: repository.installationId,
+      githubRepositoryId: repository.repositoryId,
+      repositoryOwner: repository.owner,
+      repositoryName: repository.name,
+      defaultBranch: repository.defaultBranch,
+      branch: repository.defaultBranch,
+      repositoryUrl: cloneUrl,
+      autoDeployEnabled: current.autoDeployEnabled ?? true,
+    }));
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.githubRepository;
+      delete nextErrors.repositoryUrl;
+      return nextErrors;
+    });
+  };
+
+  const validateGitHubSelection = () => {
+    if (!selectedInstallationId) {
+      return { field: "githubInstallation", message: "Connect and choose a GitHub installation" };
+    }
+
+    if (!selectedRepositoryId || !selectedRepository) {
+      return { field: "githubRepository", message: "Choose a repository" };
+    }
+
+    if (selectedRepository.installationId !== selectedInstallationId) {
+      return { field: "githubRepository", message: GITHUB_STALE_SELECTION_MESSAGE };
+    }
+
+    if (!getRepositoryCloneUrl(selectedRepository)) {
+      return {
+        field: "repositoryUrl",
+        message: "The selected repository does not have a usable HTTPS clone URL. Choose another repository or switch to Manual URL.",
+      };
+    }
+
+    return null;
+  };
+
+  const focusRepositoryButton = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex >= repositories.length) {
+      return;
+    }
+    repositoryButtonRefs.current[nextIndex]?.focus();
+  };
+
+  const handleRepositoryKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number, repository: GitHubRepository) => {
+    switch (event.key) {
+      case "ArrowDown":
+      case "ArrowRight":
+        event.preventDefault();
+        focusRepositoryButton(Math.min(index + 1, repositories.length - 1));
+        break;
+      case "ArrowUp":
+      case "ArrowLeft":
+        event.preventDefault();
+        focusRepositoryButton(Math.max(index - 1, 0));
+        break;
+      case "Home":
+        event.preventDefault();
+        focusRepositoryButton(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusRepositoryButton(repositories.length - 1);
+        break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        applyRepositorySelection(repository);
+        break;
+      default:
+        break;
+    }
+  };
 
   useEffect(() => {
     try {
@@ -194,6 +314,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       setRepositorySource(draft.repositorySource || "GITHUB_APP");
       setSelectedInstallationId(draft.selectedInstallationId);
       setSelectedRepositoryId(draft.selectedRepositoryId);
+      setSelectedRepositoryDetails(draft.selectedRepositoryDetails || null);
+      setShouldAutoSelectRepository(!draft.selectedRepositoryId);
     } catch {
       window.localStorage.removeItem(draftKey);
     }
@@ -208,9 +330,10 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       repositorySource,
       selectedInstallationId,
       selectedRepositoryId,
+      selectedRepositoryDetails,
     };
     window.localStorage.setItem(draftKey, JSON.stringify(payload));
-  }, [applicationInput, databaseInput, draftKey, mode, repositorySource, selectedInstallationId, selectedRepositoryId, step]);
+  }, [applicationInput, databaseInput, draftKey, mode, repositorySource, selectedInstallationId, selectedRepositoryDetails, selectedRepositoryId, step]);
 
   useEffect(() => {
     if (!supportsGitHub || repositorySource !== "GITHUB_APP") {
@@ -249,6 +372,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   useEffect(() => {
     if (!selectedInstallationId || repositorySource !== "GITHUB_APP") {
       setRepositories([]);
+      setRepositoryHasNext(false);
       return;
     }
 
@@ -268,20 +392,11 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
         if (matchingRepository) {
           setSelectedRepositoryDetails(matchingRepository);
-        } else if (!selectedRepositoryId && page.items.length > 0) {
+        } else if (selectedRepositoryDetails && selectedRepositoryDetails.installationId !== selectedInstallationId) {
+          clearGitHubSelection();
+        } else if (!selectedRepositoryId && shouldAutoSelectRepository && page.items.length > 0) {
           const firstRepository = page.items[0];
-          setSelectedRepositoryId(firstRepository.repositoryId);
-          setSelectedRepositoryDetails(firstRepository);
-          setApplicationInput((current) => ({
-            ...current,
-            githubInstallationId: firstRepository.installationId,
-            githubRepositoryId: firstRepository.repositoryId,
-            repositoryOwner: firstRepository.owner,
-            repositoryName: firstRepository.name,
-            defaultBranch: firstRepository.defaultBranch,
-            branch: firstRepository.defaultBranch,
-            repositoryUrl: firstRepository.cloneUrl,
-          }));
+          applyRepositorySelection(firstRepository);
         }
       } catch (error) {
         if (!cancelled) {
@@ -298,7 +413,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
     return () => {
       cancelled = true;
     };
-  }, [repositoryPage, repositoryQuery, repositorySource, selectedInstallationId, selectedRepositoryId, showToast]);
+  }, [repositoryPage, repositoryQuery, repositorySource, selectedInstallationId, selectedRepositoryDetails, selectedRepositoryId, shouldAutoSelectRepository, showToast]);
 
   useEffect(() => {
     if (!selectedRepositoryId || repositorySource !== "GITHUB_APP") {
@@ -322,7 +437,11 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
       } catch (error) {
         if (!cancelled) {
-          showToast(error instanceof Error ? error.message : "Failed to load branches", "error");
+          const message = error instanceof Error ? error.message : "Failed to load branches";
+          if (isRepositorySelectionStaleMessage(message)) {
+            clearGitHubSelection();
+          }
+          showToast(message, "error");
         }
       } finally {
         if (!cancelled) {
@@ -359,10 +478,15 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         if ((!applicationInput.runtimeTemplate || applicationInput.runtimeTemplate === "AUTO") && result.detectedProjectTypes[0]) {
           setApplicationInput((current) => ({ ...current, runtimeTemplate: result.detectedProjectTypes[0] }));
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setDetectedProjectTypes([]);
           setVisibleEntries([]);
+          const message = error instanceof Error ? error.message : "";
+          if (message && isRepositorySelectionStaleMessage(message)) {
+            clearGitHubSelection();
+            showToast(message, "error");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -378,7 +502,12 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   }, [applicationInput.applicationRootDirectory, applicationInput.branch, applicationInput.runtimeTemplate, repositorySource, selectedRepositoryId]);
 
   useEffect(() => {
-    if (!selectedRepository) {
+    if (!selectedRepository || repositorySource !== "GITHUB_APP") {
+      return;
+    }
+
+    if (selectedInstallationId && selectedRepository.installationId !== selectedInstallationId) {
+      clearGitHubSelection();
       return;
     }
 
@@ -389,9 +518,23 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       repositoryOwner: selectedRepository.owner,
       repositoryName: selectedRepository.name,
       defaultBranch: selectedRepository.defaultBranch,
-      repositoryUrl: selectedRepository.cloneUrl,
+      repositoryUrl: getRepositoryCloneUrl(selectedRepository),
     }));
-  }, [selectedRepository]);
+  }, [repositorySource, selectedInstallationId, selectedRepository]);
+
+  useEffect(() => {
+    if (repositorySource === "MANUAL") {
+      setApplicationInput((current) => ({
+        ...current,
+        githubInstallationId: null,
+        githubRepositoryId: null,
+        repositoryOwner: null,
+        repositoryName: null,
+        defaultBranch: null,
+        autoDeployEnabled: false,
+      }));
+    }
+  }, [repositorySource]);
 
   const validateStepTwo = () => {
     const nextErrors: Record<string, string> = {};
@@ -410,11 +553,9 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         nextErrors.applicationName = "Application service name is required";
       }
       if (repositorySource === "GITHUB_APP") {
-        if (!selectedInstallationId) {
-          nextErrors.githubInstallation = "Connect and choose a GitHub installation";
-        }
-        if (!selectedRepositoryId) {
-          nextErrors.githubRepository = "Choose a repository";
+        const gitHubSelectionError = validateGitHubSelection();
+        if (gitHubSelectionError) {
+          nextErrors[gitHubSelectionError.field] = gitHubSelectionError.message;
         }
       } else if (!(applicationInput.repositoryUrl || "").trim()) {
         nextErrors.repositoryUrl = "Repository URL is required";
@@ -672,14 +813,18 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                     <button
                       type="button"
                       onClick={() => setRepositorySource("GITHUB_APP")}
-                      className={`rounded-xl px-3 py-2 text-sm ${repositorySource === "GITHUB_APP" ? "bg-white shadow-sm" : "app-muted"}`}
+                      className={`rounded-xl px-3 py-2 text-sm transition-colors ${
+                        repositorySource === "GITHUB_APP" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
+                      }`}
                     >
                       GitHub App
                     </button>
                     <button
                       type="button"
                       onClick={() => setRepositorySource("MANUAL")}
-                      className={`rounded-xl px-3 py-2 text-sm ${repositorySource === "MANUAL" ? "bg-white shadow-sm" : "app-muted"}`}
+                      className={`rounded-xl px-3 py-2 text-sm transition-colors ${
+                        repositorySource === "MANUAL" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
+                      }`}
                     >
                       Manual URL
                     </button>
@@ -737,10 +882,10 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                       </button>
                     </div>
 
-                    {installationsLoading ? <div className="text-sm text-slate-500">Loading GitHub installations...</div> : null}
+                    {installationsLoading ? <div className="app-muted text-sm">Loading GitHub installations...</div> : null}
 
                     {installations.length === 0 && !installationsLoading ? (
-                      <div className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white/70 p-5 text-sm">
+                      <div className="app-selectable-empty rounded-2xl border border-dashed p-5 text-sm">
                         No active GitHub installations are linked to this Shiply account yet.
                       </div>
                     ) : null}
@@ -758,17 +903,17 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                                   type="button"
                                   onClick={() => {
                                     setSelectedInstallationId(installation.installationId);
-                                    setSelectedRepositoryId(null);
-                                    setSelectedRepositoryDetails(null);
+                                    setShouldAutoSelectRepository(true);
+                                    clearGitHubSelection({ disableAutoSelect: false });
                                     setRepositoryPage(0);
                                   }}
-                                  className={`w-full rounded-2xl border p-4 text-left ${
-                                    isSelected ? "border-indigo-500 bg-indigo-500/10" : "border-[var(--app-border)] bg-white/70"
-                                  }`}
+                                  aria-pressed={isSelected}
+                                  data-selected={isSelected}
+                                  className="app-selectable-item w-full text-left"
                                 >
                                   <div className="flex items-start justify-between gap-3">
                                     <div>
-                                      <p className="font-semibold">{installation.accountLogin}</p>
+                                      <p className="app-selectable-title">{installation.accountLogin}</p>
                                       <p className="app-muted text-sm">{installation.accountType} installation</p>
                                       <p className="app-muted mt-2 text-xs">{installation.repositoryCount} repositories</p>
                                     </div>
@@ -807,43 +952,41 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                               placeholder="Search repositories"
                             />
                           </div>
-                          <div className="space-y-2 rounded-2xl border border-[var(--app-border)] bg-white/70 p-3">
-                            {repositoriesLoading ? <div className="text-sm text-slate-500">Loading repositories...</div> : null}
+                          <div
+                            className="app-selectable-list"
+                            role="listbox"
+                            aria-label="GitHub repositories"
+                          >
+                            {repositoriesLoading ? <div className="app-muted text-sm">Loading repositories...</div> : null}
                             {!repositoriesLoading && repositories.length === 0 ? (
-                              <div className="text-sm text-slate-500">No repositories matched this installation and search.</div>
+                              <div className="app-selectable-empty text-sm">No repositories matched this installation and search.</div>
                             ) : null}
-                            {repositories.map((repository) => {
+                            {repositories.map((repository, index) => {
                               const isSelected = selectedRepositoryId === repository.repositoryId;
                               return (
                                 <button
                                   key={repository.repositoryId}
                                   type="button"
-                                  onClick={() => {
-                                    setSelectedRepositoryId(repository.repositoryId);
-                                    setSelectedRepositoryDetails(repository);
-                                    setApplicationInput((current) => ({
-                                      ...current,
-                                      githubInstallationId: repository.installationId,
-                                      githubRepositoryId: repository.repositoryId,
-                                      repositoryOwner: repository.owner,
-                                      repositoryName: repository.name,
-                                      defaultBranch: repository.defaultBranch,
-                                      branch: repository.defaultBranch,
-                                      repositoryUrl: repository.cloneUrl,
-                                    }));
+                                  id={`github-repository-option-${repository.repositoryId}`}
+                                  role="option"
+                                  ref={(element) => {
+                                    repositoryButtonRefs.current[index] = element;
                                   }}
-                                  className={`w-full rounded-2xl border p-4 text-left ${
-                                    isSelected ? "border-indigo-500 bg-indigo-500/10" : "border-[var(--app-border)]"
-                                  }`}
+                                  aria-selected={isSelected}
+                                  data-selected={isSelected}
+                                  tabIndex={isSelected || (!selectedRepositoryId && index === 0) ? 0 : -1}
+                                  onClick={() => applyRepositorySelection(repository)}
+                                  onKeyDown={(event) => handleRepositoryKeyDown(event, index, repository)}
+                                  className="app-selectable-item w-full text-left"
                                 >
                                   <div className="flex items-center justify-between gap-3">
                                     <div>
-                                      <p className="font-semibold">{repository.fullName}</p>
+                                      <p className="app-selectable-title">{repository.fullName}</p>
                                       <p className="app-muted text-sm">{repository.defaultBranch} default branch</p>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs">
-                                      {repository.privateRepository ? <Lock size={14} /> : null}
-                                      <span className="rounded-full bg-slate-100 px-2 py-1">{repository.visibility}</span>
+                                      {repository.privateRepository ? <Lock size={14} className="app-muted" /> : null}
+                                      <span className="app-selectable-badge">{repository.visibility}</span>
                                     </div>
                                   </div>
                                 </button>
@@ -874,6 +1017,30 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                     ) : null}
 
                     <div className="grid gap-4 md:grid-cols-2">
+                      <div className="md:col-span-2">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <label className="app-label mb-0">Repository URL</label>
+                          {selectedRepositoryId ? (
+                            <button
+                              type="button"
+                              onClick={() => clearGitHubSelection()}
+                              className="app-button-ghost !min-h-0 !px-3 !py-2 text-xs"
+                            >
+                              Clear selection
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="relative">
+                          <GitBranch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
+                          <input
+                            value={applicationInput.repositoryUrl || ""}
+                            readOnly
+                            className="app-input pl-10"
+                            placeholder="Select a GitHub repository to populate the clone URL"
+                          />
+                        </div>
+                        {errors.repositoryUrl ? <p className="mt-2 text-sm text-rose-500">{errors.repositoryUrl}</p> : null}
+                      </div>
                       <div>
                         <label className="app-label">Branch</label>
                         <select
@@ -1024,7 +1191,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                 </div>
 
                 {repositorySource === "GITHUB_APP" ? (
-                  <label className="flex items-center gap-3 rounded-2xl border border-[var(--app-border)] px-4 py-3 text-sm text-slate-600">
+                  <label className="flex items-center gap-3 rounded-2xl border border-[var(--app-border)] px-4 py-3 text-sm app-muted">
                     <input
                       type="checkbox"
                       checked={Boolean(applicationInput.autoDeployEnabled)}
@@ -1035,9 +1202,9 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                 ) : null}
 
                 {repositorySource === "GITHUB_APP" && (analysisLoading || detectedProjectTypes.length > 0 || visibleEntries.length > 0) ? (
-                  <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-white/70 p-4">
+                  <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
                     <div className="flex items-center gap-2">
-                      <FolderTree size={16} className="text-indigo-500" />
+                      <FolderTree size={16} className="text-[var(--app-accent)]" />
                       <p className="font-semibold">Repository signals</p>
                     </div>
                     {analysisLoading ? <p className="app-muted mt-2 text-sm">Inspecting repository contents...</p> : null}
