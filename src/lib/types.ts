@@ -72,14 +72,12 @@ export interface CreateApplicationServiceInput {
   name: string;
   repositoryUrl?: string | null;
   branch?: string | null;
-  linkedDatabaseServiceId?: string | null;
   githubInstallationId?: number | null;
   githubRepositoryId?: number | null;
   repositoryOwner?: string | null;
   repositoryName?: string | null;
   defaultBranch?: string | null;
   applicationRootDirectory?: string | null;
-  runtimeTemplate?: string | null;
   buildCommand?: string | null;
   startCommand?: string | null;
   exposedPort?: number | null;
