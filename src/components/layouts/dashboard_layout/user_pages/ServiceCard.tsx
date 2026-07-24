@@ -1,4 +1,4 @@
-import { AppWindow, Database, GitBranch, Link2, Settings } from "lucide-react";
+import { AppWindow, Database, GitBranch, Settings } from "lucide-react";
 import type { Service } from "../../../../lib/types";
 import StatusBadge from "./StatusBadge";
 
@@ -67,12 +67,6 @@ const ServiceCard = ({
           <div className="flex items-center gap-2 app-muted">
             <GitBranch size={16} />
             <span>{service.applicationConfig.branch}</span>
-          </div>
-          <div className="flex items-center gap-2 app-muted">
-            <Link2 size={16} />
-            <span>
-              {service.applicationConfig.linkedDatabaseServiceName || "No database linked"}
-            </span>
           </div>
         </div>
       ) : null}

@@ -6,7 +6,6 @@ import {
   GitBranch,
   Github,
   Layers,
-  Link2,
   Loader2,
   Lock,
   Plus,
@@ -16,7 +15,7 @@ import {
   TableProperties,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   analyzeGitHubRepository,
   createApplicationService,
@@ -39,13 +38,11 @@ import type {
 } from "../../../../lib/types";
 import { useToast } from "../../../../hooks/useToast";
 
-type ServiceCreationMode = "DATABASE" | "APPLICATION" | "BOTH";
+type ServiceCreationMode = "DATABASE" | "APPLICATION";
 type RepositorySource = "GITHUB_APP" | "MANUAL";
 
 const GITHUB_RETURN_TO_KEY = "shiply.github.returnTo";
 const GITHUB_DRAFT_PREFIX = "shiply.addServiceDraft.";
-
-const runtimeOptions = ["AUTO", "NODE", "PYTHON", "DOCKER", "MAVEN", "GRADLE"];
 
 const databaseDefaults: Record<DatabaseType, string> = {
   POSTGRESQL: "15",
@@ -116,14 +113,12 @@ const defaultApplicationInput: CreateApplicationServiceInput = {
   name: "",
   repositoryUrl: "",
   branch: "main",
-  linkedDatabaseServiceId: null,
   githubInstallationId: null,
   githubRepositoryId: null,
   repositoryOwner: null,
   repositoryName: null,
   defaultBranch: null,
   applicationRootDirectory: "",
-  runtimeTemplate: "AUTO",
   buildCommand: "",
   startCommand: "",
   exposedPort: 3000,
@@ -133,10 +128,6 @@ const defaultApplicationInput: CreateApplicationServiceInput = {
 
 const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) => {
   const { showToast } = useToast();
-  const databaseServices = useMemo(
-    () => (project.services || []).filter((service) => service.type === "DATABASE"),
-    [project.services],
-  );
 
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<ServiceCreationMode | null>(null);
@@ -170,7 +161,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
   const selectedRepository = repositories.find((repository) => repository.repositoryId === selectedRepositoryId)
     || selectedRepositoryDetails;
-  const supportsGitHub = mode === "APPLICATION" || mode === "BOTH";
+  const supportsGitHub = mode === "APPLICATION";
 
   useEffect(() => {
     try {
@@ -179,8 +170,9 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         return;
       }
       const draft = JSON.parse(raw) as DraftPayload;
-      setMode(draft.mode);
-      setStep(draft.step || 1);
+      const nextMode = draft.mode === "DATABASE" || draft.mode === "APPLICATION" ? draft.mode : null;
+      setMode(nextMode);
+      setStep(nextMode ? Math.min(Math.max(draft.step || 1, 1), 3) : 1);
       setDatabaseInput(draft.databaseInput || {
         name: "",
         databaseType: "POSTGRESQL",
@@ -356,9 +348,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
         setDetectedProjectTypes(result.detectedProjectTypes);
         setVisibleEntries(result.visibleEntries);
-        if ((!applicationInput.runtimeTemplate || applicationInput.runtimeTemplate === "AUTO") && result.detectedProjectTypes[0]) {
-          setApplicationInput((current) => ({ ...current, runtimeTemplate: result.detectedProjectTypes[0] }));
-        }
       } catch {
         if (!cancelled) {
           setDetectedProjectTypes([]);
@@ -375,7 +364,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
     return () => {
       cancelled = true;
     };
-  }, [applicationInput.applicationRootDirectory, applicationInput.branch, applicationInput.runtimeTemplate, repositorySource, selectedRepositoryId]);
+  }, [applicationInput.applicationRootDirectory, applicationInput.branch, repositorySource, selectedRepositoryId]);
 
   useEffect(() => {
     if (!selectedRepository) {
@@ -396,7 +385,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const validateStepTwo = () => {
     const nextErrors: Record<string, string> = {};
 
-    if (mode === "DATABASE" || mode === "BOTH") {
+    if (mode === "DATABASE") {
       if (!databaseInput.name.trim()) {
         nextErrors.databaseName = "Database service name is required";
       }
@@ -405,7 +394,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       }
     }
 
-    if (mode === "APPLICATION" || mode === "BOTH") {
+    if (mode === "APPLICATION") {
       if (!applicationInput.name?.trim()) {
         nextErrors.applicationName = "Application service name is required";
       }
@@ -444,10 +433,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       branch: applicationInput.branch?.trim() || "main",
       repositoryUrl: (applicationInput.repositoryUrl || "").trim(),
       applicationRootDirectory: (applicationInput.applicationRootDirectory || "").trim() || null,
-      runtimeTemplate: (applicationInput.runtimeTemplate || "").trim() || "AUTO",
       buildCommand: (applicationInput.buildCommand || "").trim() || null,
       startCommand: (applicationInput.startCommand || "").trim() || null,
-      linkedDatabaseServiceId: applicationInput.linkedDatabaseServiceId || null,
       environmentVariables: (applicationInput.environmentVariables || []).filter((variable) => variable.key.trim()),
       autoDeployEnabled: repositorySource === "GITHUB_APP" ? Boolean(applicationInput.autoDeployEnabled) : false,
     };
@@ -488,26 +475,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         showToast("Application service created");
         onClose();
         return;
-      }
-
-      const createdDatabase = await createDatabaseService(project.id, {
-        ...databaseInput,
-        name: databaseInput.name.trim(),
-        version: databaseInput.version.trim(),
-      });
-
-      try {
-        await createApplicationService(project.id, {
-          ...applicationPayload,
-          linkedDatabaseServiceId: createdDatabase.id,
-        });
-        clearDraft();
-        await onCreated();
-        showToast("Database and application services created");
-        onClose();
-      } catch {
-        await onCreated();
-        showToast("Database was created, but application creation failed. You can create or link it manually.", "error");
       }
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to create service", "error");
@@ -567,11 +534,10 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
         {step === 1 ? (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {[
                 { key: "DATABASE", title: "Database only", description: "Provision a managed database instance", icon: Database },
                 { key: "APPLICATION", title: "Application only", description: "Deploy from GitHub or a Git URL", icon: AppWindow },
-                { key: "BOTH", title: "Both", description: "Create a database and application together", icon: Layers },
               ].map(({ key, title, description, icon: Icon }) => (
                 <button
                   key={key}
@@ -600,7 +566,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
         {step === 2 ? (
           <div className="space-y-6">
-            {(mode === "DATABASE" || mode === "BOTH") ? (
+            {mode === "DATABASE" ? (
               <section className="space-y-4">
                 <h3 className="text-lg font-semibold">Database Configuration</h3>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -664,7 +630,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
               </section>
             ) : null}
 
-            {(mode === "APPLICATION" || mode === "BOTH") ? (
+            {mode === "APPLICATION" ? (
               <section className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-lg font-semibold">Application Configuration</h3>
@@ -696,31 +662,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                       placeholder="e.g. shiply-api"
                     />
                     {errors.applicationName ? <p className="mt-2 text-sm text-rose-500">{errors.applicationName}</p> : null}
-                  </div>
-                  <div>
-                    <label className="app-label">Database Link</label>
-                    {mode === "BOTH" ? (
-                      <div className="app-input flex items-center gap-2 bg-[var(--app-surface-soft)]">
-                        <Link2 size={16} className="text-indigo-500" />
-                        <span className="text-sm leading-5">This application will be linked to the database created in this flow.</span>
-                      </div>
-                    ) : (
-                      <select
-                        value={applicationInput.linkedDatabaseServiceId || ""}
-                        onChange={(event) => setApplicationInput((current) => ({
-                          ...current,
-                          linkedDatabaseServiceId: event.target.value || null,
-                        }))}
-                        className="app-input"
-                      >
-                        <option value="">No database</option>
-                        {databaseServices.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
                   </div>
                 </div>
 
@@ -919,20 +860,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="app-label">Runtime / Build Template</label>
-                    <select
-                      value={applicationInput.runtimeTemplate || "AUTO"}
-                      onChange={(event) => setApplicationInput((current) => ({ ...current, runtimeTemplate: event.target.value }))}
-                      className="app-input"
-                    >
-                      {Array.from(new Set([...runtimeOptions, ...detectedProjectTypes])).map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
                     <label className="app-label">Exposed Port</label>
                     <input
                       type="number"
@@ -1075,7 +1002,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         {step === 3 ? (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
-              {(mode === "DATABASE" || mode === "BOTH") ? (
+              {mode === "DATABASE" ? (
                 <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4">
                   <p className="text-sm font-semibold">Database</p>
                   <p className="mt-2 text-sm">{databaseInput.name}</p>
@@ -1092,7 +1019,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                   </div>
                 </div>
               ) : null}
-              {(mode === "APPLICATION" || mode === "BOTH") ? (
+              {mode === "APPLICATION" ? (
                 <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4">
                   <p className="text-sm font-semibold">Application</p>
                   <p className="mt-2 text-sm">{applicationInput.name}</p>
@@ -1102,16 +1029,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                       : applicationInput.repositoryUrl || ""}
                   </p>
                   <p className="app-muted mt-2 text-sm">Branch: {applicationInput.branch || "main"}</p>
-                  <p className="app-muted mt-2 text-sm">Runtime: {applicationInput.runtimeTemplate || "AUTO"}</p>
                   <p className="app-muted mt-2 text-sm">
                     Root directory: {applicationInput.applicationRootDirectory?.trim() || "/"}
-                  </p>
-                  <p className="app-muted mt-2 text-sm">
-                    {mode === "BOTH"
-                      ? "The application will be automatically linked to the new database."
-                      : applicationInput.linkedDatabaseServiceId
-                        ? `Linked database: ${databaseServices.find((service) => service.id === applicationInput.linkedDatabaseServiceId)?.name || "Selected database"}`
-                        : "No database linked"}
                   </p>
                 </div>
               ) : null}
@@ -1124,7 +1043,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
               </button>
               <button type="button" onClick={() => void submit()} className="app-button-primary" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                <span>{mode === "BOTH" ? "Create Services" : "Create Service"}</span>
+                <span>Create Service</span>
               </button>
             </div>
           </div>
