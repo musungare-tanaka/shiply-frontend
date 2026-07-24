@@ -15,9 +15,8 @@ import {
   TableProperties,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   analyzeGitHubRepository,
   createApplicationService,
@@ -161,6 +160,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [repositoryHasNext, setRepositoryHasNext] = useState(false);
   const [detectedProjectTypes, setDetectedProjectTypes] = useState<string[]>([]);
   const [visibleEntries, setVisibleEntries] = useState<string[]>([]);
+  const repositoryButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedDatabaseType = databaseTypeMeta[databaseInput.databaseType];
   const draftKey = buildDraftKey(project.id);
 
@@ -352,7 +352,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
         setDetectedProjectTypes(result.detectedProjectTypes);
         setVisibleEntries(result.visibleEntries);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setDetectedProjectTypes([]);
           setVisibleEntries([]);
@@ -409,6 +409,115 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       }));
     }
   }, [repositorySource]);
+
+  const getRepositoryCloneUrl = (repository: GitHubRepository) => repository.cloneUrl;
+
+  const isRepositorySelectionStaleMessage = (message: string) => {
+    const normalizedMessage = message.trim().toLowerCase();
+    return normalizedMessage.length > 0
+      && (normalizedMessage.includes("no longer available")
+        || normalizedMessage.includes("not linked to your account")
+        || normalizedMessage.includes("selected github repository"));
+  };
+
+  const clearGitHubSelection = (options?: { disableAutoSelect?: boolean }) => {
+    setSelectedRepositoryId(null);
+    setSelectedRepositoryDetails(null);
+    setBranches([]);
+    setDetectedProjectTypes([]);
+    setVisibleEntries([]);
+    setErrors((current) => {
+      if (!current.githubRepository && !current.repositoryUrl) {
+        return current;
+      }
+      const nextErrors = { ...current };
+      delete nextErrors.githubRepository;
+      delete nextErrors.repositoryUrl;
+      return nextErrors;
+    });
+    setApplicationInput((current) => ({
+      ...current,
+      githubRepositoryId: null,
+      repositoryOwner: null,
+      repositoryName: null,
+      defaultBranch: null,
+      repositoryUrl: repositorySource === "GITHUB_APP" ? "" : current.repositoryUrl,
+    }));
+    setShouldAutoSelectRepository(!(options?.disableAutoSelect ?? true));
+  };
+
+  const applyRepositorySelection = (repository: GitHubRepository) => {
+    setSelectedRepositoryId(repository.repositoryId);
+    setSelectedRepositoryDetails(repository);
+    setShouldAutoSelectRepository(false);
+    setApplicationInput((current) => ({
+      ...current,
+      githubInstallationId: repository.installationId,
+      githubRepositoryId: repository.repositoryId,
+      repositoryOwner: repository.owner,
+      repositoryName: repository.name,
+      defaultBranch: repository.defaultBranch,
+      branch: current.branch?.trim() ? current.branch : repository.defaultBranch,
+      repositoryUrl: getRepositoryCloneUrl(repository),
+    }));
+    setErrors((current) => {
+      if (!current.githubRepository && !current.repositoryUrl) {
+        return current;
+      }
+      const nextErrors = { ...current };
+      delete nextErrors.githubRepository;
+      delete nextErrors.repositoryUrl;
+      return nextErrors;
+    });
+  };
+
+  const validateGitHubSelection = () => {
+    if (!selectedInstallationId) {
+      return {
+        field: "githubInstallation",
+        message: "Connect and choose a GitHub installation",
+      } as const;
+    }
+
+    if (!selectedRepositoryId || !selectedRepositoryDetails) {
+      return {
+        field: "githubRepository",
+        message: "Choose a repository",
+      } as const;
+    }
+
+    if (selectedRepositoryDetails.installationId !== selectedInstallationId) {
+      return {
+        field: "githubRepository",
+        message: GITHUB_STALE_SELECTION_MESSAGE,
+      } as const;
+    }
+
+    return null;
+  };
+
+  const handleRepositoryKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+    repository: GitHubRepository,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      applyRepositorySelection(repository);
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      repositoryButtonRefs.current[index + 1]?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      repositoryButtonRefs.current[index - 1]?.focus();
+    }
+  };
 
   const validateStepTwo = () => {
     const nextErrors: Record<string, string> = {};
