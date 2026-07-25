@@ -8,6 +8,7 @@ import {
   analyzeGitHubRepository,
   createApplicationService,
   createDatabaseService,
+  getGitHubBranches,
   getGitHubInstallUrl,
   getGitHubInstallations,
   getGitHubRepositoriesByInstallation,
@@ -18,6 +19,7 @@ vi.mock("../../../../lib/api", () => ({
   analyzeGitHubRepository: vi.fn(),
   createApplicationService: vi.fn(),
   createDatabaseService: vi.fn(),
+  getGitHubBranches: vi.fn(),
   getGitHubInstallUrl: vi.fn(),
   getGitHubInstallations: vi.fn(),
   getGitHubRepositoriesByInstallation: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("../../../../lib/api", () => ({
 const mockedAnalyzeGitHubRepository = vi.mocked(analyzeGitHubRepository);
 const mockedCreateApplicationService = vi.mocked(createApplicationService);
 const mockedCreateDatabaseService = vi.mocked(createDatabaseService);
+const mockedGetGitHubBranches = vi.mocked(getGitHubBranches);
 const mockedGetGitHubInstallUrl = vi.mocked(getGitHubInstallUrl);
 const mockedGetGitHubInstallations = vi.mocked(getGitHubInstallations);
 const mockedGetGitHubRepositoriesByInstallation = vi.mocked(getGitHubRepositoriesByInstallation);
@@ -109,6 +112,10 @@ const configureGitHubMocks = (repositories: GitHubRepository[] = [firstRepositor
     totalPages: 1,
     hasNext: false,
   });
+  mockedGetGitHubBranches.mockResolvedValue([
+    { name: "main", sha: "abc123" },
+    { name: "develop", sha: "def456" },
+  ]);
   mockedAnalyzeGitHubRepository.mockResolvedValue({
     branch: "main",
     applicationRootDirectory: "",
@@ -162,6 +169,23 @@ describe("AddServiceModal", () => {
 
     expect(screen.getByRole("option", { name: /shiply\/repo-two/i })).toHaveAttribute("data-selected", "true");
     expectCloneUrlFields("https://github.com/shiply/repo-two.git");
+    expect(screen.getByRole("combobox")).toHaveValue("develop");
+  });
+
+  it("limits branch selection to available repository branches", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await openApplicationStep(user);
+
+    const branchSelect = screen.getByRole("combobox");
+    expect(branchSelect).toHaveValue("main");
+    expect(screen.getByRole("option", { name: "main" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "develop" })).toBeInTheDocument();
+
+    await user.selectOptions(branchSelect, "develop");
+
+    expect(branchSelect).toHaveValue("develop");
   });
 
   it("supports keyboard navigation and selection inside the repository list", async () => {
@@ -227,6 +251,7 @@ describe("AddServiceModal", () => {
     mockedAnalyzeGitHubRepository.mockReset();
     mockedCreateApplicationService.mockReset();
     mockedCreateDatabaseService.mockReset();
+    mockedGetGitHubBranches.mockReset();
     mockedGetGitHubInstallUrl.mockReset();
     mockedGetGitHubInstallations.mockReset();
     mockedGetGitHubRepositoriesByInstallation.mockReset();
@@ -241,6 +266,7 @@ describe("AddServiceModal", () => {
       totalPages: 1,
       hasNext: false,
     });
+    mockedGetGitHubBranches.mockResolvedValue([{ name: "main", sha: "abc123" }]);
     mockedAnalyzeGitHubRepository.mockResolvedValue({
       branch: "main",
       applicationRootDirectory: "",
@@ -290,7 +316,7 @@ describe("AddServiceModal", () => {
       totalPages: 1,
       hasNext: false,
     });
-    mockedAnalyzeGitHubRepository.mockRejectedValue(new Error(staleSelectionMessage));
+    mockedGetGitHubBranches.mockRejectedValue(new Error(staleSelectionMessage));
 
     localStorage.setItem("shiply.addServiceDraft.project-1", JSON.stringify({
       mode: "APPLICATION",

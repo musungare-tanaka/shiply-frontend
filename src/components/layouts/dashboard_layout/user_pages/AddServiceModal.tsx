@@ -16,6 +16,7 @@ import {
   analyzeGitHubRepository,
   createApplicationService,
   createDatabaseService,
+  getGitHubBranches,
   getGitHubInstallUrl,
   getGitHubInstallations,
   getGitHubRepositoriesByInstallation,
@@ -26,6 +27,7 @@ import type {
   CreateApplicationServiceInput,
   CreateDatabaseServiceInput,
   DatabaseType,
+  GitHubBranch,
   GitHubInstallationConnection,
   GitHubRepository,
   Project,
@@ -143,10 +145,12 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [installations, setInstallations] = useState<GitHubInstallationConnection[]>([]);
   const [installationsLoading, setInstallationsLoading] = useState(false);
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [installationLoadError, setInstallationLoadError] = useState<string | null>(null);
   const [repositoryLoadError, setRepositoryLoadError] = useState<string | null>(null);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
+  const [branches, setBranches] = useState<GitHubBranch[]>([]);
   const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null);
   const [selectedRepositoryDetails, setSelectedRepositoryDetails] = useState<GitHubRepository | null>(null);
@@ -297,6 +301,47 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
   useEffect(() => {
     if (!selectedRepositoryId || repositorySource !== "GITHUB_APP") {
+      setBranches([]);
+      setDetectedProjectTypes([]);
+      setVisibleEntries([]);
+      return;
+    }
+
+    let cancelled = false;
+    const loadBranches = async () => {
+      setBranchesLoading(true);
+      try {
+        const nextBranches = await getGitHubBranches(selectedRepositoryId);
+        if (cancelled) {
+          return;
+        }
+        setBranches(nextBranches);
+        if (nextBranches.length > 0 && !nextBranches.some((branch) => branch.name === applicationInput.branch)) {
+          setApplicationInput((current) => ({ ...current, branch: nextBranches[0].name }));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Failed to load branches";
+          if (isRepositorySelectionStaleMessage(message)) {
+            clearGitHubSelection();
+          }
+          showToast(message, "error");
+        }
+      } finally {
+        if (!cancelled) {
+          setBranchesLoading(false);
+        }
+      }
+    };
+
+    void loadBranches();
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationInput.branch, repositorySource, selectedRepositoryId, showToast]);
+
+  useEffect(() => {
+    if (!selectedRepositoryId || repositorySource !== "GITHUB_APP") {
       return;
     }
 
@@ -389,6 +434,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const clearGitHubSelection = (options?: { disableAutoSelect?: boolean }) => {
     setSelectedRepositoryId(null);
     setSelectedRepositoryDetails(null);
+    setBranches([]);
     setDetectedProjectTypes([]);
     setVisibleEntries([]);
     setErrors((current) => {
@@ -422,7 +468,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       repositoryOwner: repository.owner,
       repositoryName: repository.name,
       defaultBranch: repository.defaultBranch,
-      branch: current.branch?.trim() ? current.branch : repository.defaultBranch,
+      branch: repository.defaultBranch,
       repositoryUrl: getRepositoryCloneUrl(repository),
     }));
     setErrors((current) => {
@@ -828,31 +874,25 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                               />
                             </div>
                             <div>
-                              <label className="app-label">Installation</label>
-                              <input
-                                value={selectedRepository?.installationAccountLogin || ""}
-                                readOnly
+                              <label className="app-label">Branch</label>
+                              <select
+                                value={applicationInput.branch || ""}
+                                onChange={(event) => setApplicationInput((current) => ({ ...current, branch: event.target.value }))}
                                 className="app-input"
-                                placeholder="Choose an installation"
-                              />
-                            </div>
-                            <div>
-                              <label className="app-label">Repository Owner</label>
-                              <input
-                                value={applicationInput.repositoryOwner || ""}
-                                readOnly
-                                className="app-input"
-                                placeholder="Auto-filled from GitHub"
-                              />
-                            </div>
-                            <div>
-                              <label className="app-label">Default Branch</label>
-                              <input
-                                value={applicationInput.defaultBranch || ""}
-                                readOnly
-                                className="app-input"
-                                placeholder="Auto-filled from GitHub"
-                              />
+                                disabled={!selectedRepositoryId || branchesLoading}
+                              >
+                                {branchesLoading ? <option>Loading branches...</option> : null}
+                                {!branchesLoading && branches.length === 0 ? (
+                                  <option value={applicationInput.branch || selectedRepository?.defaultBranch || "main"}>
+                                    {applicationInput.branch || selectedRepository?.defaultBranch || "main"}
+                                  </option>
+                                ) : null}
+                                {branches.map((branch) => (
+                                  <option key={branch.name} value={branch.name}>
+                                    {branch.name}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                             <div className="md:col-span-2">
                               <label className="app-label">Clone URL</label>
