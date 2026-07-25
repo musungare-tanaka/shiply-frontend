@@ -16,7 +16,6 @@ import {
   analyzeGitHubRepository,
   createApplicationService,
   createDatabaseService,
-  getGitHubBranches,
   getGitHubInstallUrl,
   getGitHubInstallations,
   getGitHubRepositoriesByInstallation,
@@ -27,7 +26,6 @@ import type {
   CreateApplicationServiceInput,
   CreateDatabaseServiceInput,
   DatabaseType,
-  GitHubBranch,
   GitHubInstallationConnection,
   GitHubRepository,
   Project,
@@ -145,12 +143,10 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [installations, setInstallations] = useState<GitHubInstallationConnection[]>([]);
   const [installationsLoading, setInstallationsLoading] = useState(false);
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
-  const [branchesLoading, setBranchesLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [installationLoadError, setInstallationLoadError] = useState<string | null>(null);
   const [repositoryLoadError, setRepositoryLoadError] = useState<string | null>(null);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
-  const [branches, setBranches] = useState<GitHubBranch[]>([]);
   const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null);
   const [selectedRepositoryDetails, setSelectedRepositoryDetails] = useState<GitHubRepository | null>(null);
@@ -301,47 +297,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
   useEffect(() => {
     if (!selectedRepositoryId || repositorySource !== "GITHUB_APP") {
-      setBranches([]);
-      setDetectedProjectTypes([]);
-      setVisibleEntries([]);
-      return;
-    }
-
-    let cancelled = false;
-    const loadBranches = async () => {
-      setBranchesLoading(true);
-      try {
-        const nextBranches = await getGitHubBranches(selectedRepositoryId);
-        if (cancelled) {
-          return;
-        }
-        setBranches(nextBranches);
-        if (nextBranches.length > 0 && !nextBranches.some((branch) => branch.name === applicationInput.branch)) {
-          setApplicationInput((current) => ({ ...current, branch: nextBranches[0].name }));
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const message = error instanceof Error ? error.message : "Failed to load branches";
-          if (isRepositorySelectionStaleMessage(message)) {
-            clearGitHubSelection();
-          }
-          showToast(message, "error");
-        }
-      } finally {
-        if (!cancelled) {
-          setBranchesLoading(false);
-        }
-      }
-    };
-
-    void loadBranches();
-    return () => {
-      cancelled = true;
-    };
-  }, [applicationInput.branch, repositorySource, selectedRepositoryId, showToast]);
-
-  useEffect(() => {
-    if (!selectedRepositoryId || repositorySource !== "GITHUB_APP") {
       return;
     }
 
@@ -434,7 +389,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const clearGitHubSelection = (options?: { disableAutoSelect?: boolean }) => {
     setSelectedRepositoryId(null);
     setSelectedRepositoryDetails(null);
-    setBranches([]);
     setDetectedProjectTypes([]);
     setVisibleEntries([]);
     setErrors((current) => {
@@ -937,74 +891,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                     )}
                   </div>
 
-                  <div className="app-section-card space-y-4">
-                    <div>
-                      <p className="text-sm font-semibold">Branch and deployment settings</p>
-                      <p className="app-muted mt-1 text-sm">
-                        Choose the branch, app root, and commands Shiply should use for this service.
-                      </p>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="app-label">Branch</label>
-                        <select
-                          value={applicationInput.branch || ""}
-                          onChange={(event) => setApplicationInput((current) => ({ ...current, branch: event.target.value }))}
-                          className="app-input"
-                          disabled={repositorySource === "GITHUB_APP" && !selectedRepositoryId}
-                        >
-                          {branchesLoading ? <option>Loading branches...</option> : null}
-                          {branches.map((branch) => (
-                            <option key={branch.name} value={branch.name}>
-                              {branch.name}
-                            </option>
-                          ))}
-                          {repositorySource === "MANUAL" && branches.length === 0 ? <option value={applicationInput.branch || "main"}>{applicationInput.branch || "main"}</option> : null}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="app-label">Application Root Directory</label>
-                        <input
-                          value={applicationInput.applicationRootDirectory || ""}
-                          onChange={(event) => setApplicationInput((current) => ({ ...current, applicationRootDirectory: event.target.value }))}
-                          className="app-input"
-                          placeholder="Leave blank for repo root"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label">Exposed Port</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={65535}
-                          value={applicationInput.exposedPort || ""}
-                          onChange={(event) => setApplicationInput((current) => ({
-                            ...current,
-                            exposedPort: event.target.value ? Number(event.target.value) : null,
-                          }))}
-                          className="app-input"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label">Build Command</label>
-                        <input
-                          value={applicationInput.buildCommand || ""}
-                          onChange={(event) => setApplicationInput((current) => ({ ...current, buildCommand: event.target.value }))}
-                          className="app-input"
-                          placeholder="npm run build"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="app-label">Start Command</label>
-                        <input
-                          value={applicationInput.startCommand || ""}
-                          onChange={(event) => setApplicationInput((current) => ({ ...current, startCommand: event.target.value }))}
-                          className="app-input"
-                          placeholder="npm run start"
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4">
@@ -1141,10 +1027,6 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                     {repositorySource === "GITHUB_APP"
                       ? selectedRepository?.fullName || "GitHub repository will be selected"
                       : applicationInput.repositoryUrl || ""}
-                  </p>
-                  <p className="app-muted mt-2 text-sm">Branch: {applicationInput.branch || "main"}</p>
-                  <p className="app-muted mt-2 text-sm">
-                    Root directory: {applicationInput.applicationRootDirectory?.trim() || "/"}
                   </p>
                 </div>
               ) : null}
