@@ -55,6 +55,15 @@ const installation: GitHubInstallationConnection = {
   reconnectRequired: false,
 };
 
+const reconnectInstallation: GitHubInstallationConnection = {
+  installationId: 22,
+  accountLogin: "ops-team",
+  accountType: "Organization",
+  status: "ACTIVE",
+  repositoryCount: 4,
+  reconnectRequired: true,
+};
+
 const firstRepository: GitHubRepository = {
   repositoryId: 101,
   installationId: 11,
@@ -125,6 +134,12 @@ const openApplicationStep = async (user: ReturnType<typeof userEvent.setup>) => 
   await screen.findByRole("listbox", { name: /github repositories/i });
 };
 
+const expectCloneUrlFields = (value: string) => {
+  const inputs = screen.getAllByDisplayValue(value);
+  expect(inputs.length).toBeGreaterThan(0);
+  inputs.forEach((input) => expect(input).toHaveAttribute("readonly"));
+};
+
 describe("AddServiceModal", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -142,7 +157,7 @@ describe("AddServiceModal", () => {
     const selectedRepositoryButton = await screen.findByRole("option", { name: /shiply\/repo-one/i });
     expect(selectedRepositoryButton).toHaveClass("app-selectable-item");
     expect(selectedRepositoryButton).toHaveAttribute("data-selected", "true");
-    expect(screen.getByDisplayValue("https://github.com/shiply/repo-one.git")).toHaveAttribute("readonly");
+    expectCloneUrlFields("https://github.com/shiply/repo-one.git");
   });
 
   it("updates the selected repository and repository URL when another repository is clicked", async () => {
@@ -153,7 +168,8 @@ describe("AddServiceModal", () => {
     await user.click(screen.getByRole("option", { name: /shiply\/repo-two/i }));
 
     expect(screen.getByRole("option", { name: /shiply\/repo-two/i })).toHaveAttribute("data-selected", "true");
-    expect(screen.getByDisplayValue("https://github.com/shiply/repo-two.git")).toBeInTheDocument();
+    expectCloneUrlFields("https://github.com/shiply/repo-two.git");
+    expect(screen.getByDisplayValue("develop")).toBeInTheDocument();
   });
 
   it("supports keyboard navigation and selection inside the repository list", async () => {
@@ -167,7 +183,7 @@ describe("AddServiceModal", () => {
     await user.keyboard("{ArrowDown}{Enter}");
 
     expect(screen.getByRole("option", { name: /shiply\/repo-two/i })).toHaveAttribute("data-selected", "true");
-    expect(screen.getByDisplayValue("https://github.com/shiply/repo-two.git")).toBeInTheDocument();
+    expectCloneUrlFields("https://github.com/shiply/repo-two.git");
   });
 
   it("keeps manual repository URL entry editable and supports clearing a GitHub selection", async () => {
@@ -185,6 +201,83 @@ describe("AddServiceModal", () => {
     await user.type(manualUrlInput, "https://example.com/manual-repo.git");
 
     expect(manualUrlInput).toHaveValue("https://example.com/manual-repo.git");
+  });
+
+  it("submits repository searches and keeps pagination controls visible", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await openApplicationStep(user);
+
+    const searchInput = screen.getByPlaceholderText(/search repositories/i);
+    await user.type(searchInput, "repo-two");
+
+    await waitFor(() => {
+      expect(mockedGetGitHubRepositoriesByInstallation).toHaveBeenLastCalledWith(11, "repo-two", 0, 12);
+    });
+
+    expect(screen.getByText(/page 1 of 1/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: /next/i }).at(0)).toBeDisabled();
+  });
+
+  it("shows disconnected and reconnect-required states for GitHub installations", async () => {
+    const user = userEvent.setup();
+    mockedGetGitHubInstallations.mockResolvedValueOnce([]);
+    const firstRender = renderModal();
+
+    await user.click(screen.getByRole("button", { name: /application only/i }));
+    await user.click(screen.getAllByRole("button", { name: /^next$/i }).at(-1)!);
+    expect(screen.getByText(/github is not connected yet/i)).toBeInTheDocument();
+
+    firstRender.unmount();
+    showToast.mockReset();
+    mockedAnalyzeGitHubRepository.mockReset();
+    mockedCreateApplicationService.mockReset();
+    mockedCreateDatabaseService.mockReset();
+    mockedGetGitHubBranches.mockReset();
+    mockedGetGitHubInstallUrl.mockReset();
+    mockedGetGitHubInstallations.mockReset();
+    mockedGetGitHubRepositoriesByInstallation.mockReset();
+    mockedRefreshGitHubInstallation.mockReset();
+    mockedGetGitHubInstallations.mockResolvedValue([reconnectInstallation]);
+    mockedRefreshGitHubInstallation.mockResolvedValue(reconnectInstallation);
+    mockedGetGitHubRepositoriesByInstallation.mockResolvedValue({
+      items: [{ ...firstRepository, installationId: 22, installationAccountLogin: "ops-team" }],
+      page: 0,
+      size: 12,
+      totalItems: 1,
+      totalPages: 1,
+      hasNext: false,
+    });
+    mockedGetGitHubBranches.mockResolvedValue([{ name: "main", sha: "abc123" }]);
+    mockedAnalyzeGitHubRepository.mockResolvedValue({
+      branch: "main",
+      applicationRootDirectory: "",
+      visibleEntries: ["package.json"],
+      detectedProjectTypes: ["NODE"],
+    });
+    mockedGetGitHubInstallUrl.mockResolvedValue({ url: "https://github.com/apps/shiply/installations/new" });
+    renderModal();
+
+    await screen.findByText(/ops-team/i);
+    expect(screen.getByText(/^Reconnect$/)).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: /reconnect installation/i }).at(-1)!);
+    await waitFor(() => {
+      expect(mockedRefreshGitHubInstallation).toHaveBeenCalledWith(22);
+    });
+  });
+
+  it("shows an empty repository state when no repositories match", async () => {
+    const user = userEvent.setup();
+    configureGitHubMocks([]);
+    renderModal();
+
+    await openApplicationStep(user);
+
+    expect(screen.getByText(/no repositories found/i)).toBeInTheDocument();
+    expect(screen.getByText(/try a different search term/i)).toBeInTheDocument();
   });
 
   it("blocks progression when the selected repository has no clone URL", async () => {
@@ -246,6 +339,8 @@ describe("AddServiceModal", () => {
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(staleSelectionMessage, "error");
     });
-    expect(screen.getByPlaceholderText(/select a github repository to populate the clone url/i)).toHaveValue("");
+    screen.getAllByPlaceholderText(/select a github repository to populate the clone url/i).forEach((input) => {
+      expect(input).toHaveValue("");
+    });
   });
 });

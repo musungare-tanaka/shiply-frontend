@@ -4,19 +4,14 @@ import {
   Database,
   FolderTree,
   GitBranch,
-  Github,
   Layers,
   Loader2,
-  Lock,
   Plus,
-  RefreshCw,
-  Search,
   Server,
   TableProperties,
   X,
 } from "lucide-react";
-import type { KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   analyzeGitHubRepository,
   createApplicationService,
@@ -38,6 +33,8 @@ import type {
   Project,
 } from "../../../../lib/types";
 import { useToast } from "../../../../hooks/useToast";
+import GitHubRepositoryPicker from "../../../github/GitHubRepositoryPicker";
+import GitHubIcon from "../../../github/GitHubIcon";
 
 type ServiceCreationMode = "DATABASE" | "APPLICATION";
 type RepositorySource = "GITHUB_APP" | "MANUAL";
@@ -111,6 +108,7 @@ interface DraftPayload {
 
 const buildDraftKey = (projectId: string) => `${GITHUB_DRAFT_PREFIX}${projectId}`;
 const GITHUB_STALE_SELECTION_MESSAGE = "The selected GitHub repository is no longer available. Choose another repository or reconnect GitHub.";
+const GITHUB_MISSING_CLONE_URL_MESSAGE = "The selected GitHub repository does not have a usable HTTPS clone URL.";
 
 const defaultApplicationInput: CreateApplicationServiceInput = {
   name: "",
@@ -149,6 +147,8 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [repositoriesLoading, setRepositoriesLoading] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [installationLoadError, setInstallationLoadError] = useState<string | null>(null);
+  const [repositoryLoadError, setRepositoryLoadError] = useState<string | null>(null);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
   const [branches, setBranches] = useState<GitHubBranch[]>([]);
   const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
@@ -157,10 +157,10 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [shouldAutoSelectRepository, setShouldAutoSelectRepository] = useState(true);
   const [repositoryQuery, setRepositoryQuery] = useState("");
   const [repositoryPage, setRepositoryPage] = useState(0);
+  const [repositoryTotalPages, setRepositoryTotalPages] = useState(0);
   const [repositoryHasNext, setRepositoryHasNext] = useState(false);
   const [detectedProjectTypes, setDetectedProjectTypes] = useState<string[]>([]);
   const [visibleEntries, setVisibleEntries] = useState<string[]>([]);
-  const repositoryButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedDatabaseType = databaseTypeMeta[databaseInput.databaseType];
   const draftKey = buildDraftKey(project.id);
 
@@ -220,6 +220,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
     let cancelled = false;
     const loadInstallations = async () => {
       setInstallationsLoading(true);
+      setInstallationLoadError(null);
       try {
         const nextInstallations = await getGitHubInstallations();
         if (cancelled) {
@@ -231,7 +232,9 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
       } catch (error) {
         if (!cancelled) {
-          showToast(error instanceof Error ? error.message : "Failed to load GitHub installations", "error");
+          const message = error instanceof Error ? error.message : "Failed to load GitHub installations";
+          setInstallationLoadError(message);
+          showToast(message, "error");
         }
       } finally {
         if (!cancelled) {
@@ -256,12 +259,14 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
     let cancelled = false;
     const loadRepositories = async () => {
       setRepositoriesLoading(true);
+      setRepositoryLoadError(null);
       try {
         const page = await getGitHubRepositoriesByInstallation(selectedInstallationId, repositoryQuery, repositoryPage, 12);
         if (cancelled) {
           return;
         }
         setRepositories(page.items);
+        setRepositoryTotalPages(page.totalPages);
         setRepositoryHasNext(page.hasNext);
         const matchingRepository = selectedRepositoryId
           ? page.items.find((repository) => repository.repositoryId === selectedRepositoryId) || null
@@ -277,7 +282,9 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         }
       } catch (error) {
         if (!cancelled) {
-          showToast(error instanceof Error ? error.message : "Failed to load repositories", "error");
+          const message = error instanceof Error ? error.message : "Failed to load repositories";
+          setRepositoryLoadError(message);
+          showToast(message, "error");
         }
       } finally {
         if (!cancelled) {
@@ -410,7 +417,11 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
     }
   }, [repositorySource]);
 
-  const getRepositoryCloneUrl = (repository: GitHubRepository) => repository.cloneUrl;
+  const getRepositoryCloneUrl = (repository: GitHubRepository) => {
+    const cloneUrl = repository.cloneUrl?.trim() || "";
+    return /^https?:\/\//i.test(cloneUrl) ? cloneUrl : "";
+  };
+  const selectedRepositoryCloneUrl = selectedRepository ? getRepositoryCloneUrl(selectedRepository) : "";
 
   const isRepositorySelectionStaleMessage = (message: string) => {
     const normalizedMessage = message.trim().toLowerCase();
@@ -493,30 +504,14 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
       } as const;
     }
 
+    if (!getRepositoryCloneUrl(selectedRepositoryDetails)) {
+      return {
+        field: "githubRepository",
+        message: GITHUB_MISSING_CLONE_URL_MESSAGE,
+      } as const;
+    }
+
     return null;
-  };
-
-  const handleRepositoryKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-    repository: GitHubRepository,
-  ) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      applyRepositorySelection(repository);
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      repositoryButtonRefs.current[index + 1]?.focus();
-      return;
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      repositoryButtonRefs.current[index - 1]?.focus();
-    }
   };
 
   const validateStepTwo = () => {
@@ -767,222 +762,196 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
             {mode === "APPLICATION" ? (
               <section className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold">Application Configuration</h3>
-                  <div className="inline-flex rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-1">
-                    <button
-                      type="button"
-                      onClick={() => setRepositorySource("GITHUB_APP")}
-                      className={`rounded-xl px-3 py-2 text-sm transition-colors ${
-                        repositorySource === "GITHUB_APP" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
-                      }`}
-                    >
-                      GitHub App
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRepositorySource("MANUAL")}
-                      className={`rounded-xl px-3 py-2 text-sm transition-colors ${
-                        repositorySource === "MANUAL" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
-                      }`}
-                    >
-                      Manual URL
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="app-section-card space-y-5">
                   <div>
-                    <label className="app-label">Service Name</label>
-                    <input
-                      value={applicationInput.name || ""}
-                      onChange={(event) => setApplicationInput((current) => ({ ...current, name: event.target.value }))}
-                      className="app-input"
-                      placeholder="e.g. shiply-api"
-                    />
-                    {errors.applicationName ? <p className="mt-2 text-sm text-rose-500">{errors.applicationName}</p> : null}
+                    <h3 className="text-lg font-semibold">Application Configuration</h3>
+                    <p className="app-muted mt-1 text-sm">
+                      Configure the service, connect a source repository, and tune the deployment settings.
+                    </p>
                   </div>
-                </div>
 
-                {repositorySource === "GITHUB_APP" ? (
-                  <div className="space-y-4 rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold">Service basics</p>
+                      <p className="app-muted mt-1 text-sm">Give this application service a clear name for the project dashboard.</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div>
-                        <p className="text-sm font-semibold">Connect GitHub</p>
-                        <p className="app-muted mt-1 text-sm">Choose an installation, search its repositories, then configure the selected branch.</p>
+                        <label className="app-label">Service Name</label>
+                        <input
+                          value={applicationInput.name || ""}
+                          onChange={(event) => setApplicationInput((current) => ({ ...current, name: event.target.value }))}
+                          className="app-input"
+                          placeholder="e.g. shiply-api"
+                        />
+                        {errors.applicationName ? <p className="mt-2 text-sm text-rose-500">{errors.applicationName}</p> : null}
                       </div>
-                      <button type="button" onClick={() => void connectGitHub()} className="app-button-primary">
-                        <Github size={16} />
-                        <span>Connect GitHub</span>
-                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">Repository source</p>
+                        <p className="app-muted mt-1 text-sm">
+                          Use the GitHub App for secure repo discovery or paste a manual Git URL.
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setRepositorySource("GITHUB_APP")}
+                          className={`rounded-xl px-3 py-2 text-sm transition-colors ${
+                            repositorySource === "GITHUB_APP" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
+                          }`}
+                        >
+                          <GitHubIcon className="mr-2 inline h-4 w-4" title="" />
+                          GitHub App
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRepositorySource("MANUAL")}
+                          className={`rounded-xl px-3 py-2 text-sm transition-colors ${
+                            repositorySource === "MANUAL" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "app-muted"
+                          }`}
+                        >
+                          Manual URL
+                        </button>
+                      </div>
                     </div>
 
-                    {installationsLoading ? <div className="app-muted text-sm">Loading GitHub installations...</div> : null}
+                    {repositorySource === "GITHUB_APP" ? (
+                      <div className="space-y-4">
+                        <GitHubRepositoryPicker
+                          title="Connect GitHub"
+                          description="Choose an installation, search its repositories, and carry the selected repository details directly into this service."
+                          installations={installations}
+                          installationsLoading={installationsLoading}
+                          installationsError={installationLoadError}
+                          repositories={repositories}
+                          repositoriesLoading={repositoriesLoading}
+                          repositoryError={repositoryLoadError || errors.githubRepository || errors.githubInstallation || errors.repositoryUrl || null}
+                          repositoryQuery={repositoryQuery}
+                          repositoryPage={repositoryPage}
+                          repositoryTotalPages={repositoryTotalPages}
+                          repositoryHasNext={repositoryHasNext}
+                          selectedInstallationId={selectedInstallationId}
+                          selectedRepositoryId={selectedRepositoryId}
+                          selectedRepository={selectedRepository}
+                          onConnect={() => void connectGitHub()}
+                          onReconnectInstallation={(installationId) => void reconnectInstallation(installationId)}
+                          onSelectInstallation={(installationId) => {
+                            setSelectedInstallationId(installationId);
+                            setShouldAutoSelectRepository(true);
+                            clearGitHubSelection({ disableAutoSelect: false });
+                            setRepositoryPage(0);
+                          }}
+                          onRepositoryQueryChange={(value) => {
+                            setRepositoryQuery(value);
+                            setRepositoryPage(0);
+                          }}
+                          onSelectRepository={applyRepositorySelection}
+                          onPreviousPage={() => setRepositoryPage((current) => Math.max(current - 1, 0))}
+                          onNextPage={() => setRepositoryPage((current) => current + 1)}
+                          onClearSelection={() => clearGitHubSelection()}
+                        />
 
-                    {installations.length === 0 && !installationsLoading ? (
-                      <div className="app-selectable-empty rounded-2xl border border-dashed p-5 text-sm">
-                        No active GitHub installations are linked to this Shiply account yet.
-                      </div>
-                    ) : null}
-
-                    {installations.length > 0 ? (
-                      <div className="grid gap-3 lg:grid-cols-[0.9fr,1.1fr]">
-                        <div className="space-y-3">
-                          <label className="app-label">Installation or account</label>
-                          <div className="space-y-2">
-                            {installations.map((installation) => {
-                              const isSelected = selectedInstallationId === installation.installationId;
-                              return (
-                                <button
-                                  key={installation.installationId}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedInstallationId(installation.installationId);
-                                    setShouldAutoSelectRepository(true);
-                                    clearGitHubSelection({ disableAutoSelect: false });
-                                    setRepositoryPage(0);
-                                  }}
-                                  aria-pressed={isSelected}
-                                  data-selected={isSelected}
-                                  className="app-selectable-item w-full text-left"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <p className="app-selectable-title">{installation.accountLogin}</p>
-                                      <p className="app-muted text-sm">{installation.accountType} installation</p>
-                                      <p className="app-muted mt-2 text-xs">{installation.repositoryCount} repositories</p>
-                                    </div>
-                                    {installation.reconnectRequired ? (
-                                      <button
-                                        type="button"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          void reconnectInstallation(installation.installationId);
-                                        }}
-                                        className="app-button-ghost !px-3 !py-2 text-xs"
-                                      >
-                                        <RefreshCw size={14} />
-                                        <span>Reconnect</span>
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                </button>
-                              );
-                            })}
+                        <div className="app-section-card space-y-4">
+                          <div>
+                            <p className="text-sm font-semibold">Selected repository details</p>
+                            <p className="app-muted mt-1 text-sm">
+                              These values are populated from the repository you selected above.
+                            </p>
                           </div>
-                          {errors.githubInstallation ? <p className="text-sm text-rose-500">{errors.githubInstallation}</p> : null}
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="app-label">Repository</label>
+                              <input
+                                value={selectedRepository?.fullName || ""}
+                                readOnly
+                                className="app-input"
+                                placeholder="Choose a repository"
+                              />
+                            </div>
+                            <div>
+                              <label className="app-label">Installation</label>
+                              <input
+                                value={selectedRepository?.installationAccountLogin || ""}
+                                readOnly
+                                className="app-input"
+                                placeholder="Choose an installation"
+                              />
+                            </div>
+                            <div>
+                              <label className="app-label">Repository Owner</label>
+                              <input
+                                value={applicationInput.repositoryOwner || ""}
+                                readOnly
+                                className="app-input"
+                                placeholder="Auto-filled from GitHub"
+                              />
+                            </div>
+                            <div>
+                              <label className="app-label">Default Branch</label>
+                              <input
+                                value={applicationInput.defaultBranch || ""}
+                                readOnly
+                                className="app-input"
+                                placeholder="Auto-filled from GitHub"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="app-label">Clone URL</label>
+                              <input
+                                value={selectedRepositoryCloneUrl}
+                                readOnly
+                                className="app-input"
+                                placeholder="Select a GitHub repository to populate the clone URL"
+                              />
+                            </div>
+                          </div>
                         </div>
-
-                        <div className="space-y-3">
-                          <label className="app-label">Repository</label>
+                      </div>
+                    ) : (
+                      <div className="app-section-card space-y-4">
+                        <div>
+                          <p className="text-sm font-semibold">Manual repository URL</p>
+                          <p className="app-muted mt-1 text-sm">
+                            Paste a Git clone URL when you do not want to browse through the GitHub App.
+                          </p>
+                        </div>
+                        <div>
+                          <label className="app-label">Repository URL</label>
                           <div className="relative">
-                            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
+                            <GitBranch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
                             <input
-                              value={repositoryQuery}
-                              onChange={(event) => {
-                                setRepositoryQuery(event.target.value);
-                                setRepositoryPage(0);
-                              }}
+                              value={applicationInput.repositoryUrl || ""}
+                              onChange={(event) => setApplicationInput((current) => ({ ...current, repositoryUrl: event.target.value }))}
                               className="app-input pl-10"
-                              placeholder="Search repositories"
+                              placeholder="https://github.com/user/repo"
                             />
                           </div>
-                          <div
-                            className="app-selectable-list"
-                            role="listbox"
-                            aria-label="GitHub repositories"
-                          >
-                            {repositoriesLoading ? <div className="app-muted text-sm">Loading repositories...</div> : null}
-                            {!repositoriesLoading && repositories.length === 0 ? (
-                              <div className="app-selectable-empty text-sm">No repositories matched this installation and search.</div>
-                            ) : null}
-                            {repositories.map((repository, index) => {
-                              const isSelected = selectedRepositoryId === repository.repositoryId;
-                              return (
-                                <button
-                                  key={repository.repositoryId}
-                                  type="button"
-                                  id={`github-repository-option-${repository.repositoryId}`}
-                                  role="option"
-                                  ref={(element) => {
-                                    repositoryButtonRefs.current[index] = element;
-                                  }}
-                                  aria-selected={isSelected}
-                                  data-selected={isSelected}
-                                  tabIndex={isSelected || (!selectedRepositoryId && index === 0) ? 0 : -1}
-                                  onClick={() => applyRepositorySelection(repository)}
-                                  onKeyDown={(event) => handleRepositoryKeyDown(event, index, repository)}
-                                  className="app-selectable-item w-full text-left"
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                      <p className="app-selectable-title">{repository.fullName}</p>
-                                      <p className="app-muted text-sm">{repository.defaultBranch} default branch</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs">
-                                      {repository.privateRepository ? <Lock size={14} className="app-muted" /> : null}
-                                      <span className="app-selectable-badge">{repository.visibility}</span>
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <button
-                              type="button"
-                              className="app-button-ghost"
-                              disabled={repositoryPage === 0}
-                              onClick={() => setRepositoryPage((current) => Math.max(current - 1, 0))}
-                            >
-                              Previous
-                            </button>
-                            <button
-                              type="button"
-                              className="app-button-ghost"
-                              disabled={!repositoryHasNext}
-                              onClick={() => setRepositoryPage((current) => current + 1)}
-                            >
-                              Next
-                            </button>
-                          </div>
-                          {errors.githubRepository ? <p className="text-sm text-rose-500">{errors.githubRepository}</p> : null}
+                          {errors.repositoryUrl ? <p className="mt-2 text-sm text-rose-500">{errors.repositoryUrl}</p> : null}
                         </div>
                       </div>
-                    ) : null}
+                    )}
+                  </div>
 
+                  <div className="app-section-card space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold">Branch and deployment settings</p>
+                      <p className="app-muted mt-1 text-sm">
+                        Choose the branch, app root, and commands Shiply should use for this service.
+                      </p>
+                    </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div className="md:col-span-2">
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <label className="app-label mb-0">Repository URL</label>
-                          {selectedRepositoryId ? (
-                            <button
-                              type="button"
-                              onClick={() => clearGitHubSelection()}
-                              className="app-button-ghost !min-h-0 !px-3 !py-2 text-xs"
-                            >
-                              Clear selection
-                            </button>
-                          ) : null}
-                        </div>
-                        <div className="relative">
-                          <GitBranch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
-                          <input
-                            value={applicationInput.repositoryUrl || ""}
-                            readOnly
-                            className="app-input pl-10"
-                            placeholder="Select a GitHub repository to populate the clone URL"
-                          />
-                        </div>
-                        {errors.repositoryUrl ? <p className="mt-2 text-sm text-rose-500">{errors.repositoryUrl}</p> : null}
-                      </div>
                       <div>
                         <label className="app-label">Branch</label>
                         <select
                           value={applicationInput.branch || ""}
                           onChange={(event) => setApplicationInput((current) => ({ ...current, branch: event.target.value }))}
                           className="app-input"
-                          disabled={!selectedRepositoryId}
+                          disabled={repositorySource === "GITHUB_APP" && !selectedRepositoryId}
                         >
                           {branchesLoading ? <option>Loading branches...</option> : null}
                           {branches.map((branch) => (
@@ -990,6 +959,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                               {branch.name}
                             </option>
                           ))}
+                          {repositorySource === "MANUAL" && branches.length === 0 ? <option value={applicationInput.branch || "main"}>{applicationInput.branch || "main"}</option> : null}
                         </select>
                       </div>
                       <div>
@@ -1001,56 +971,39 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
                           placeholder="Leave blank for repo root"
                         />
                       </div>
+                      <div>
+                        <label className="app-label">Exposed Port</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={65535}
+                          value={applicationInput.exposedPort || ""}
+                          onChange={(event) => setApplicationInput((current) => ({
+                            ...current,
+                            exposedPort: event.target.value ? Number(event.target.value) : null,
+                          }))}
+                          className="app-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label">Build Command</label>
+                        <input
+                          value={applicationInput.buildCommand || ""}
+                          onChange={(event) => setApplicationInput((current) => ({ ...current, buildCommand: event.target.value }))}
+                          className="app-input"
+                          placeholder="npm run build"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="app-label">Start Command</label>
+                        <input
+                          value={applicationInput.startCommand || ""}
+                          onChange={(event) => setApplicationInput((current) => ({ ...current, startCommand: event.target.value }))}
+                          className="app-input"
+                          placeholder="npm run start"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="app-label">Repository URL</label>
-                    <div className="relative">
-                      <GitBranch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 app-muted" />
-                      <input
-                        value={applicationInput.repositoryUrl || ""}
-                        onChange={(event) => setApplicationInput((current) => ({ ...current, repositoryUrl: event.target.value }))}
-                        className="app-input pl-10"
-                        placeholder="https://github.com/user/repo"
-                      />
-                    </div>
-                    {errors.repositoryUrl ? <p className="mt-2 text-sm text-rose-500">{errors.repositoryUrl}</p> : null}
-                  </div>
-                )}
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="app-label">Exposed Port</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={65535}
-                      value={applicationInput.exposedPort || ""}
-                      onChange={(event) => setApplicationInput((current) => ({
-                        ...current,
-                        exposedPort: event.target.value ? Number(event.target.value) : null,
-                      }))}
-                      className="app-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="app-label">Build Command</label>
-                    <input
-                      value={applicationInput.buildCommand || ""}
-                      onChange={(event) => setApplicationInput((current) => ({ ...current, buildCommand: event.target.value }))}
-                      className="app-input"
-                      placeholder="npm run build"
-                    />
-                  </div>
-                  <div>
-                    <label className="app-label">Start Command</label>
-                    <input
-                      value={applicationInput.startCommand || ""}
-                      onChange={(event) => setApplicationInput((current) => ({ ...current, startCommand: event.target.value }))}
-                      className="app-input"
-                      placeholder="npm run start"
-                    />
                   </div>
                 </div>
 

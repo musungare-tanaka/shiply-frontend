@@ -306,6 +306,7 @@
   .app-selectable-item:hover {
     background-color: var(--app-nav-hover);
     border-color: var(--app-border-strong);
+    transform: translateY(-1px);
   }
 
   .app-selectable-item:focus-visible {
@@ -317,7 +318,9 @@
   .app-selectable-item[data-selected="true"] {
     background-color: var(--app-accent-soft);
     border-color: var(--app-accent);
-    box-shadow: inset 0 0 0 1px var(--app-accent-soft);
+    box-shadow:
+      inset 0 0 0 1px var(--app-accent-soft),
+      0 10px 24px rgba(37, 99, 235, 0.12);
   }
 
   .app-selectable-title {
@@ -427,6 +430,12 @@
 
   .authenticated-app[data-theme="dark"] .app-warning-panel {
     border-color: rgba(251, 191, 36, 0.22);
+  }
+
+  .app-section-card {
+    @apply rounded-[1.5rem] border p-4 sm:p-5;
+    background-color: var(--app-surface);
+    border-color: var(--app-border);
   }
 
   .app-danger-panel {
