@@ -37,7 +37,7 @@ const Pricing = () => {
               <li>✔ Auto-sleep on inactivity</li>
             </ul>
 
-            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-[#474b4f] text-white py-2 rounded-md font-medium hover:bg-[#474b4f] hover:text-white transition">
+            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-black bg-black text-white py-2 rounded-md font-medium hover:opacity-90 transition">
               Get Started
             </button>
           </div>
@@ -87,7 +87,7 @@ const Pricing = () => {
               <li>✔ Priority Support</li>
             </ul>
 
-            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-[#474b4f] text-white py-2 rounded-md font-medium hover:bg-[#474b4f] hover:text-white transition">
+            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-black bg-black text-white py-2 rounded-md font-medium hover:opacity-90 transition">
               Upgrade
             </button>
           </div>

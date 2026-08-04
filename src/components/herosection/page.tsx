@@ -122,28 +122,6 @@ const HeroSection = () => {
             </div>
           </div>
         </div>
-
-        {/* Stats Section */}
-        <div className="mt-20 md:mt-28 pt-12 border-t border-gray-200">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">99.9%</div>
-              <div className="text-gray-600 text-sm">Uptime SLA</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">60+</div>
-              <div className="text-gray-600 text-sm">Regions Worldwide</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">50ms</div>
-              <div className="text-gray-600 text-sm">Average Response</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">∞</div>
-              <div className="text-gray-600 text-sm">Free Bandwidth</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
