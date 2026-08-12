@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import shiplyLogo from "/transparent-logo.svg";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navLinks = [
+    { href: "#product", label: "Product" },
+    { href: "#pricing", label: "Pricing" },
+    { href: "#docs", label: "Docs" },
+    { href: "#use-cases", label: "Use Cases" },
+  ];
 
   return (
     <nav className="fixed top-0 left-0 right-0 w-full bg-white shadow-md z-50">
@@ -12,45 +17,32 @@ const NavBar = () => {
           
           {/* Logo */}
           <div className="flex items-center">
-            <img src={shiplyLogo} alt="Shiply Logo" className="h-16 w-auto" />
+            <a href="#product" aria-label="Go to top of page">
+              <img src={shiplyLogo} alt="Shiply Logo" className="h-16 w-auto" />
+            </a>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <a 
-              href="#" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
-            >
-              Product
-            </a>
-            <a 
-              href="#" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
-            >
-              Pricing
-            </a>
-            <a 
-              href="#" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
-            >
-              Docs
-            </a>
-            <a 
-              href="#" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
-            >
-              Use Cases
-            </a>
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link
-              to="/login"
-              className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow"
+            <a
+              href="#pricing"
+              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700"
             >
-              Get Started
-            </Link>
+              View Plans
+            </a>
           </div>
 
           {/* Mobile Menu Button */}
@@ -94,42 +86,24 @@ const NavBar = () => {
         }`}
       >
         <div className="px-4 pt-2 pb-4 space-y-4 border-t">
-          <a 
-            href="#" 
-            className="block py-3 text-gray-700 hover:text-blue-600 font-medium hover:bg-gray-50 rounded-lg px-3 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            Product
-          </a>
-          <a 
-            href="#" 
-            className="block py-3 text-gray-700 hover:text-blue-600 font-medium hover:bg-gray-50 rounded-lg px-3 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            Pricing
-          </a>
-          <a 
-            href="#" 
-            className="block py-3 text-gray-700 hover:text-blue-600 font-medium hover:bg-gray-50 rounded-lg px-3 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            Docs
-          </a>
-          <a 
-            href="#" 
-            className="block py-3 text-gray-700 hover:text-blue-600 font-medium hover:bg-gray-50 rounded-lg px-3 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            Use Cases
-          </a>
-          <div className="pt-2 border-t">
-            <Link
-              to="/login"
-              className="block bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors text-center"
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="block rounded-lg px-3 py-3 text-gray-700 font-medium transition-colors hover:bg-gray-50 hover:text-blue-600"
               onClick={() => setIsOpen(false)}
             >
-              Get Started
-            </Link>
+              {link.label}
+            </a>
+          ))}
+          <div className="pt-2 border-t">
+            <a
+              href="#pricing"
+              className="block rounded-lg bg-blue-600 py-3 text-center font-medium text-white transition-colors hover:bg-blue-700"
+              onClick={() => setIsOpen(false)}
+            >
+              View Plans
+            </a>
           </div>
         </div>
       </div>

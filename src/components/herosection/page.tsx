@@ -1,9 +1,8 @@
-import { ArrowRight, CheckCircle, Cloud, Code, Zap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { CheckCircle, Cloud, Code, Zap } from "lucide-react";
 
 const HeroSection = () => {
   return (
-    <div className="pt-20 pb-16 md:pt-32 md:pb-24 bg-white">
+    <section id="product" className="bg-white pt-20 pb-16 md:pt-32 md:pb-24 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
           {/* Left Content */}
@@ -27,13 +26,12 @@ const HeroSection = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
-              <Link to="/login" className="bg-black text-white px-8 py-3 rounded-lg font-medium text-base hover:bg-gray-900 transition-colors duration-200 flex items-center justify-center gap-2">
-                Get Started Free
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <button className="border border-gray-300 text-white px-8 py-3 rounded-lg font-medium text-base ">
-                View Demo
-              </button>
+              <div className="bg-black px-8 py-3 rounded-lg font-medium text-base text-white text-center">
+                Launching soon
+              </div>
+              <div className="border border-gray-300 px-8 py-3 rounded-lg font-medium text-base text-gray-500 text-center">
+                Landing page preview
+              </div>
             </div>
 
             {/* Trust Badges */}
@@ -123,7 +121,7 @@ const HeroSection = () => {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -1,7 +1,7 @@
 
 const UseCases = () => {
   return (
-    <section className="w-full bg-gray-50 py-20">
+    <section id="use-cases" className="w-full bg-gray-50 py-20 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
@@ -106,12 +106,9 @@ const UseCases = () => {
 
         {/* CTA */}
         <div className="text-center mt-16">
-          <a
-            href="/login"
-            className="inline-block bg-[#474b4f] text-white px-6 py-3 rounded-md font-medium hover:opacity-90 transition"
-          >
-            Deploy your first service
-          </a>
+          <div className="inline-block rounded-md border border-amber-200 bg-amber-50 px-6 py-3 font-medium text-amber-800">
+            Sign-ups are temporarily paused for this preview
+          </div>
         </div>
 
       </div>

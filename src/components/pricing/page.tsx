@@ -1,7 +1,9 @@
 
 const Pricing = () => {
+  const previewButtonClassName = "mt-8 w-full cursor-not-allowed rounded-md border border-gray-300 bg-gray-100 py-2 font-medium text-gray-500";
+
   return (
-    <section className="w-full bg-white py-20">
+    <section id="pricing" className="w-full bg-white py-20 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -37,8 +39,8 @@ const Pricing = () => {
               <li>✔ Auto-sleep on inactivity</li>
             </ul>
 
-            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-black bg-black text-white py-2 rounded-md font-medium hover:opacity-90 transition">
-              Get Started
+            <button disabled className={previewButtonClassName}>
+              Preview only
             </button>
           </div>
 
@@ -50,7 +52,7 @@ const Pricing = () => {
             </p>
 
             <div className="mt-6">
-              <span className="text-4xl font-bold text-[#474b4f]">$10</span>
+              <span className="text-4xl font-bold text-[#474b4f]">$5</span>
               <span className="text-gray-500">/month</span>
             </div>
 
@@ -62,8 +64,8 @@ const Pricing = () => {
               <li>✔ Email Support</li>
             </ul>
 
-            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full bg-black text-white py-2 rounded-md font-medium hover:opacity-90 transition">
-              Deploy Now
+            <button disabled className={previewButtonClassName}>
+              Coming soon
             </button>
           </div>
 
@@ -75,7 +77,7 @@ const Pricing = () => {
             </p>
 
             <div className="mt-6">
-              <span className="text-4xl font-bold text-[#474b4f]">$30</span>
+              <span className="text-4xl font-bold text-[#474b4f]">$10</span>
               <span className="text-gray-500">/month</span>
             </div>
 
@@ -87,8 +89,8 @@ const Pricing = () => {
               <li>✔ Priority Support</li>
             </ul>
 
-            <button  onClick={() => window.location.href = '/login'} className="mt-8 w-full border border-black bg-black text-white py-2 rounded-md font-medium hover:opacity-90 transition">
-              Upgrade
+            <button disabled className={previewButtonClassName}>
+              Coming soon
             </button>
           </div>
 

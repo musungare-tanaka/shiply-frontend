@@ -1,9 +1,7 @@
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from "react-router-dom";
 
 import LandingPage from "./components/landing_page/page";
-import Login from "./components/auth/login/page";
-import Signup from "./components/auth/signup/page";
 import ForgotPassword from "./components/auth/forgot-password/page";
 import VerifyResetOtp from "./components/auth/verify-reset-otp/page";
 import ResetPassword from "./components/auth/reset-password/page";
@@ -31,8 +29,8 @@ function AppContent() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/signup" element={<Navigate to="/" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
