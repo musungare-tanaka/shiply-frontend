@@ -1,4 +1,5 @@
 import { CheckCircle, Cloud, Code, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -26,12 +27,18 @@ const HeroSection = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
-              <div className="bg-black px-8 py-3 rounded-lg font-medium text-base text-white text-center">
-                Launching soon
-              </div>
-              <div className="border border-gray-300 px-8 py-3 rounded-lg font-medium text-base text-gray-500 text-center">
-                Landing page preview
-              </div>
+              <Link
+                to="/signup"
+                className="bg-black px-8 py-3 rounded-lg font-medium text-base text-white text-center transition-opacity hover:opacity-90"
+              >
+                Start for free
+              </Link>
+              <Link
+                to="/login"
+                className="border border-gray-300 px-8 py-3 rounded-lg font-medium text-base text-gray-700 text-center transition-colors hover:border-gray-400 hover:bg-gray-50"
+              >
+                Log in
+              </Link>
             </div>
 
             {/* Trust Badges */}

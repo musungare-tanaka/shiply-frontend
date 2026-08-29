@@ -1,15 +1,18 @@
 import "./App.css";
-import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 
 import LandingPage from "./components/landing_page/page";
+import Login from "./components/auth/login/page";
+import Signup from "./components/auth/signup/page";
 import ForgotPassword from "./components/auth/forgot-password/page";
 import VerifyResetOtp from "./components/auth/verify-reset-otp/page";
 import ResetPassword from "./components/auth/reset-password/page";
 import ProtectedRoute from "./components/protectedRoutes/page";
+import GuestRoute from "./components/guestRoutes/page";
 import UserLayout from "./components/layouts/dashboard_layout/page";
 import GitHubImportPage from "./components/github/GitHubImportPage";
 
-function AppContent() {
+export function AppRoutes() {
   const location = useLocation();
   const isCentered =
     location.pathname === "/login"
@@ -29,11 +32,46 @@ function AppContent() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/signup" element={<Navigate to="/" replace />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/login"
+          element={(
+            <GuestRoute>
+              <Login />
+            </GuestRoute>
+          )}
+        />
+        <Route
+          path="/signup"
+          element={(
+            <GuestRoute>
+              <Signup />
+            </GuestRoute>
+          )}
+        />
+        <Route
+          path="/forgot-password"
+          element={(
+            <GuestRoute>
+              <ForgotPassword />
+            </GuestRoute>
+          )}
+        />
+        <Route
+          path="/verify-reset-otp"
+          element={(
+            <GuestRoute>
+              <VerifyResetOtp />
+            </GuestRoute>
+          )}
+        />
+        <Route
+          path="/reset-password"
+          element={(
+            <GuestRoute>
+              <ResetPassword />
+            </GuestRoute>
+          )}
+        />
 
         {/* Protected routes */}
         <Route
@@ -61,7 +99,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <AppRoutes />
     </Router>
   );
 }

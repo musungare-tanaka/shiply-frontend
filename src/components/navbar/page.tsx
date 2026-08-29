@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import shiplyLogo from "/transparent-logo.svg";
 
 const NavBar = () => {
@@ -37,12 +38,18 @@ const NavBar = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-6">
-            <a
-              href="#pricing"
+            <Link
+              to="/login"
+              className="text-sm font-medium text-gray-700 transition-colors duration-200 hover:text-blue-600"
+            >
+              Log in
+            </Link>
+            <Link
+              to="/signup"
               className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700"
             >
-              View Plans
-            </a>
+              Sign up
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -97,13 +104,20 @@ const NavBar = () => {
             </a>
           ))}
           <div className="pt-2 border-t">
-            <a
-              href="#pricing"
-              className="block rounded-lg bg-blue-600 py-3 text-center font-medium text-white transition-colors hover:bg-blue-700"
+            <Link
+              to="/login"
+              className="block rounded-lg px-3 py-3 text-gray-700 font-medium transition-colors hover:bg-gray-50 hover:text-blue-600"
               onClick={() => setIsOpen(false)}
             >
-              View Plans
-            </a>
+              Log in
+            </Link>
+            <Link
+              to="/signup"
+              className="mt-3 block rounded-lg bg-blue-600 py-3 text-center font-medium text-white transition-colors hover:bg-blue-700"
+              onClick={() => setIsOpen(false)}
+            >
+              Sign up
+            </Link>
           </div>
         </div>
       </div>

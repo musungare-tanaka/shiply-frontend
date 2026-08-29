@@ -130,8 +130,9 @@ const Signup = () => {
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         <div>
-          <label className="block text-sm font-medium text-gray-600">Full Name</label>
+          <label htmlFor="signup-full-name" className="block text-sm font-medium text-gray-600">Full Name</label>
           <input
+            id="signup-full-name"
             type="text"
             placeholder="Jane Doe"
             value={fullName}
@@ -141,8 +142,9 @@ const Signup = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600">Email</label>
+          <label htmlFor="signup-email" className="block text-sm font-medium text-gray-600">Email</label>
           <input
+            id="signup-email"
             type="email"
             placeholder="you@company.com"
             required

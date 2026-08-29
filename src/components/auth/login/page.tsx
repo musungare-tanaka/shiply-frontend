@@ -143,10 +143,11 @@ const Login = () => {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-600">
+          <label htmlFor="login-email" className="block text-sm font-medium text-gray-600">
             Email
           </label>
           <input
+            id="login-email"
             type="email"
             required
             value={email}
