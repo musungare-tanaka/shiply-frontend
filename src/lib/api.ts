@@ -15,6 +15,9 @@ import type {
   GitHubRepository,
   Project,
   Service,
+  BillingOverview,
+  PaymentResponse,
+  SubscriptionTier,
 } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:9091").replace(/\/$/, "");
@@ -111,6 +114,21 @@ export const createApplicationService = (projectId: string, input: CreateApplica
     method: "POST",
     headers: buildHeaders(),
     body: JSON.stringify(input),
+  });
+
+export const getBillingOverview = () =>
+  request<BillingOverview>("/api/payments/overview", { headers: buildHeaders() });
+
+export const initiatePayment = (tier: SubscriptionTier, ecocashNumber: string, saveNumber: boolean) =>
+  request<PaymentResponse>("/api/payments", {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({ tier, ecocashNumber, saveNumber }),
+  });
+
+export const getPaymentStatus = (merchantReference: string) =>
+  request<PaymentResponse>(`/api/payments/${encodeURIComponent(merchantReference)}`, {
+    headers: buildHeaders(),
   });
 
 export const getGitHubInstallUrl = () =>

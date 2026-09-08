@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getDeployment, getProjectDeployments, triggerDeploy } from "./api";
+import { getBillingOverview, getDeployment, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -31,5 +31,24 @@ describe("deployment API calls", () => {
       "http://localhost:9091/api/v1/deployments/deploy-1",
       "http://localhost:9091/api/v1/projects/project-1/deployments",
     ]);
+  });
+
+  it("loads billing, initiates EcoCash, and reads Shiply payment status", async () => {
+    const overview = { enabled: true, tiers: [], serviceCount: 0 };
+    const payment = { merchantReference: "SHIPLY-1", status: "PENDING", amount: 130, currency: "ZWG" };
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 201, json: async () => payment });
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => payment });
+
+    await expect(getBillingOverview()).resolves.toEqual(overview);
+    await expect(initiatePayment("STARTER", "0771234567", true)).resolves.toEqual(payment);
+    await expect(getPaymentStatus("SHIPLY-1")).resolves.toEqual(payment);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "http://localhost:9091/api/payments",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ tier: "STARTER", ecocashNumber: "0771234567", saveNumber: true }),
+      }));
+    expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:9091/api/payments/SHIPLY-1");
   });
 });

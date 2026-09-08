@@ -4,6 +4,34 @@ export type ServiceStatus = "PENDING" | "PROVISIONING" | "RUNNING" | "FAILED";
 
 export type DatabaseType = "POSTGRESQL" | "MYSQL" | "REDIS" | "MONGODB";
 
+export type SubscriptionTier = "STARTER" | "PRO" | "BUSINESS";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+
+export interface SubscriptionTierOption {
+  tier: SubscriptionTier;
+  usdPrice: number;
+  zwgPrice: number;
+  maxServices: number;
+}
+
+export interface BillingOverview {
+  enabled: boolean;
+  tiers: SubscriptionTierOption[];
+  ecocashNumber?: string | null;
+  activeTier?: SubscriptionTier | null;
+  currentPeriodEnd?: string | null;
+  serviceCount: number;
+}
+
+export interface PaymentResponse {
+  merchantReference: string;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  message: string;
+  completedAt?: string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
