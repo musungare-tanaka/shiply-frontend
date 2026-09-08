@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Layers, Plus, Settings } from "lucide-react";
-import { getProject } from "../../../../lib/api";
-import type { Project, Service } from "../../../../lib/types";
+import { ArrowLeft, Layers, Plus, Rocket, Settings } from "lucide-react";
+import { getProject, getProjectDeployments } from "../../../../lib/api";
+import { isDeploymentActive } from "../../../../hooks/useDeploymentStatus";
+import type { DeploymentStatusResponse, Project, Service } from "../../../../lib/types";
 import AddServiceModal from "./AddServiceModal";
 import ProjectSettingsModal from "./ProjectSettingsModal";
 import ServiceCard from "./ServiceCard";
@@ -18,6 +19,7 @@ export default function ManageProject() {
   const [showAddService, setShowAddService] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [activeService, setActiveService] = useState<Service | null>(null);
+  const [activeDeployments, setActiveDeployments] = useState<Record<string, DeploymentStatusResponse>>({});
 
   const fetchProject = useCallback(async () => {
     if (!projectId) {
@@ -40,6 +42,25 @@ export default function ManageProject() {
   useEffect(() => {
     void fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    let cancelled = false;
+    void getProjectDeployments(projectId)
+      .then((deployments) => {
+        if (cancelled) return;
+        setActiveDeployments(deployments.reduce<Record<string, DeploymentStatusResponse>>((result, deployment) => {
+          if (isDeploymentActive(deployment) && !result[deployment.serviceId]) result[deployment.serviceId] = deployment;
+          return result;
+        }, {}));
+      })
+      .catch(() => {
+        if (!cancelled) setActiveDeployments({});
+      });
+
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
@@ -106,6 +127,14 @@ export default function ManageProject() {
             </button>
             <button
               type="button"
+              onClick={() => navigate(`/dashboard/deployments?projectId=${encodeURIComponent(projectId)}`)}
+              className="app-button-secondary"
+            >
+              <Rocket size={18} />
+              <span>View Deployments</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowAddService(true)}
               className="app-button-primary"
             >
@@ -133,6 +162,7 @@ export default function ManageProject() {
               key={service.id}
               service={service}
               onOpenSettings={setActiveService}
+              activeDeployment={activeDeployments[service.id]}
             />
           ))}
         </div>

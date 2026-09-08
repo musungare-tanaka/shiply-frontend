@@ -151,3 +151,18 @@ export interface GitHubProjectImportInput {
   autoDeploy: boolean;
   linkedDatabaseServiceId?: string | null;
 }
+
+export interface DeployApplicationServiceResponse {
+  deploymentId: string;
+}
+
+export interface DeploymentStatusResponse {
+  deploymentId: string;
+  projectId: string;
+  serviceId: string;
+  serviceName: string;
+  status: string | null;
+  eventType: string | null;
+  timestamp: string | null;
+  metadata: Record<string, unknown>;
+}

@@ -4,6 +4,8 @@ import type {
   CreateApplicationServiceInput,
   CreateDatabaseServiceInput,
   CreateProjectInput,
+  DeployApplicationServiceResponse,
+  DeploymentStatusResponse,
   GitHubRepositoryAnalysis,
   GitHubBranch,
   GitHubInstallUrlResponse,
@@ -191,5 +193,21 @@ export const linkApplicationToDatabase = (appServiceId: string, dbServiceId: str
 export const deleteService = (serviceId: string) =>
   request<void>(`/api/v1/services/${serviceId}`, {
     method: "DELETE",
+    headers: buildHeaders(),
+  });
+
+export const triggerDeploy = (serviceId: string) =>
+  request<DeployApplicationServiceResponse>(`/api/v1/services/${serviceId}/deploy`, {
+    method: "POST",
+    headers: buildHeaders(),
+  });
+
+export const getDeployment = (deploymentId: string) =>
+  request<DeploymentStatusResponse>(`/api/v1/deployments/${deploymentId}`, {
+    headers: buildHeaders(),
+  });
+
+export const getProjectDeployments = (projectId: string) =>
+  request<DeploymentStatusResponse[]>(`/api/v1/projects/${projectId}/deployments`, {
     headers: buildHeaders(),
   });
