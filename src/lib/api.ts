@@ -17,6 +17,8 @@ import type {
   Service,
   BillingOverview,
   PaymentResponse,
+  PaymentHistoryPage,
+  PaymentStatus,
   SubscriptionTier,
 } from "./types";
 
@@ -130,6 +132,24 @@ export const getPaymentStatus = (merchantReference: string) =>
   request<PaymentResponse>(`/api/payments/${encodeURIComponent(merchantReference)}`, {
     headers: buildHeaders(),
   });
+
+export interface PaymentHistoryFilters {
+  page?: number;
+  size?: number;
+  status?: PaymentStatus;
+  from?: string;
+  to?: string;
+}
+
+export const getPaymentHistory = (filters: PaymentHistoryFilters = {}) => {
+  const query = new URLSearchParams();
+  query.set("page", String(filters.page ?? 0));
+  query.set("size", String(filters.size ?? 20));
+  if (filters.status) query.set("status", filters.status);
+  if (filters.from) query.set("from", filters.from);
+  if (filters.to) query.set("to", filters.to);
+  return request<PaymentHistoryPage>(`/api/payments/history?${query.toString()}`, { headers: buildHeaders() });
+};
 
 export const getGitHubInstallUrl = () =>
   request<GitHubInstallUrlResponse>("/api/integrations/github/install-url", {

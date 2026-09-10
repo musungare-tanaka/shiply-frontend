@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getBillingOverview, getDeployment, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -50,5 +50,16 @@ describe("deployment API calls", () => {
         body: JSON.stringify({ tier: "STARTER", ecocashNumber: "0771234567", saveNumber: true }),
       }));
     expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:9091/api/payments/SHIPLY-1");
+  });
+
+  it("loads authenticated payment history with encoded filters", async () => {
+    const history = { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 };
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => history });
+
+    await expect(getPaymentHistory({ page: 1, status: "REFUNDED", from: "2026-09-01", to: "2026-09-10" })).resolves.toEqual(history);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:9091/api/payments/history?page=1&size=20&status=REFUNDED&from=2026-09-01&to=2026-09-10",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer test-token" }) }),
+    );
   });
 });

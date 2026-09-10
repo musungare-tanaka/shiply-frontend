@@ -35,10 +35,33 @@ export interface BillingOverview {
 export interface PaymentResponse {
   merchantReference: string;
   status: PaymentStatus;
+  statusLabel: string;
   amount: number;
   currency: string;
   message: string;
   completedAt?: string | null;
+}
+
+export interface PaymentHistoryItem {
+  merchantReference: string;
+  subscriptionTier: SubscriptionTier;
+  amount: number;
+  currency: string;
+  paymentChannel: string;
+  status: PaymentStatus;
+  statusLabel: string;
+  message: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+}
+
+export interface PaymentHistoryPage {
+  content: PaymentHistoryItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 export interface Project {
