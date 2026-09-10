@@ -5,7 +5,16 @@ export type ServiceStatus = "PENDING" | "PROVISIONING" | "RUNNING" | "FAILED";
 export type DatabaseType = "POSTGRESQL" | "MYSQL" | "REDIS" | "MONGODB";
 
 export type SubscriptionTier = "STARTER" | "PRO" | "BUSINESS";
-export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+export type PaymentStatus =
+  | "PENDING"
+  | "PAID_AWAITING_DELIVERY"
+  | "DELIVERED_PENDING_SETTLEMENT"
+  | "SETTLED"
+  | "FAILED"
+  | "CANCELLED"
+  | "DISPUTED"
+  | "REFUNDED"
+  | "REVIEW_REQUIRED";
 
 export interface SubscriptionTierOption {
   tier: SubscriptionTier;

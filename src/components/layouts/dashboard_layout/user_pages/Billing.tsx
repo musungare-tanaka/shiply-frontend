@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, Smartphone, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBillingOverview, getPaymentStatus, initiatePayment } from "../../../../lib/api";
 import type { BillingOverview, PaymentResponse, SubscriptionTier } from "../../../../lib/types";
@@ -6,6 +6,10 @@ import type { BillingOverview, PaymentResponse, SubscriptionTier } from "../../.
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
 const displayTier = (tier: string) => tier.charAt(0) + tier.slice(1).toLowerCase();
+const isEntitlementState = (status: PaymentResponse["status"]) =>
+  status === "PAID_AWAITING_DELIVERY" || status === "DELIVERED_PENDING_SETTLEMENT" || status === "SETTLED";
+const isProgressingState = (status: PaymentResponse["status"]) =>
+  status === "PENDING" || status === "PAID_AWAITING_DELIVERY" || status === "DELIVERED_PENDING_SETTLEMENT" || status === "REVIEW_REQUIRED";
 
 export default function Billing() {
   const [overview, setOverview] = useState<BillingOverview | null>(null);
@@ -33,11 +37,11 @@ export default function Billing() {
     if (!payment) return;
     const latest = await getPaymentStatus(payment.merchantReference);
     setPayment(latest);
-    if (latest.status === "PAID") await loadOverview();
+    if (isEntitlementState(latest.status)) await loadOverview();
   }, [loadOverview, payment]);
 
   useEffect(() => {
-    if (!payment || payment.status !== "PENDING" || timedOut) return undefined;
+    if (!payment || !isProgressingState(payment.status) || timedOut) return undefined;
     const timer = window.setInterval(async () => {
       pollAttempts.current += 1;
       if (pollAttempts.current > MAX_POLL_ATTEMPTS) {
@@ -48,7 +52,7 @@ export default function Billing() {
       try {
         const latest = await getPaymentStatus(payment.merchantReference);
         setPayment(latest);
-        if (latest.status === "PAID") await loadOverview();
+        if (isEntitlementState(latest.status)) await loadOverview();
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "Could not refresh payment status");
       }
@@ -112,17 +116,17 @@ export default function Billing() {
               <label htmlFor="paynow-mobile" className="app-label">EcoCash number</label>
               <input id="paynow-mobile" className="app-input" value={mobileNumber}
                 onChange={(event) => setMobileNumber(event.target.value)} placeholder="077 123 4567"
-                autoComplete="tel" inputMode="tel" disabled={!overview?.enabled || submitting || payment?.status === "PENDING"} required />
+                autoComplete="tel" inputMode="tel" disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} required />
             </div>
             <label className="flex items-center gap-3 text-sm">
               <input type="checkbox" checked={saveNumber} onChange={(event) => setSaveNumber(event.target.checked)}
-                disabled={!overview?.enabled || submitting || payment?.status === "PENDING"} />
+                disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} />
               Save this number after a successful payment
             </label>
             {error ? <div className="rounded-xl border p-3 text-sm text-red-700">{error}</div> : null}
             {payment ? <PaymentState payment={payment} timedOut={timedOut} onRefresh={() => void refreshPayment()} /> : null}
             <button type="submit" className="app-button-primary"
-              disabled={!overview?.enabled || submitting || payment?.status === "PENDING"}>
+              disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))}>
               {submitting ? "Starting payment…" : `Pay ZWG ${selected?.zwgPrice.toFixed(2) ?? "—"}`}
             </button>
           </form>
@@ -141,10 +145,12 @@ export default function Billing() {
   );
 }
 
-function PaymentState({ payment, timedOut, onRefresh }: { payment: PaymentResponse; timedOut: boolean; onRefresh: () => void }) {
-  const paid = payment.status === "PAID";
-  const pending = payment.status === "PENDING";
-  const Icon = paid ? CheckCircle2 : pending ? Clock3 : XCircle;
+export function PaymentState({ payment, timedOut, onRefresh }: { payment: PaymentResponse; timedOut: boolean; onRefresh: () => void }) {
+  const paid = isEntitlementState(payment.status);
+  const pending = isProgressingState(payment.status);
+  const review = payment.status === "DISPUTED" || payment.status === "REVIEW_REQUIRED";
+  const refunded = payment.status === "REFUNDED";
+  const Icon = paid ? CheckCircle2 : review ? AlertTriangle : pending ? Clock3 : refunded ? RotateCcw : XCircle;
   return (
     <div className={`rounded-2xl border p-4 text-sm ${paid ? "bg-[var(--app-success-soft)] text-[var(--app-success-text)]" : "bg-[var(--app-surface-soft)]"}`}>
       <div className="flex items-start gap-3"><Icon size={19} className="mt-0.5 shrink-0" /><div><p className="font-semibold">{payment.message}</p>
