@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBillingOverview, getPaymentHistory, getPaymentStatus, initiatePayment } from "../../../../lib/api";
-import type { BillingOverview, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, SubscriptionTier } from "../../../../lib/types";
+import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, SubscriptionTier } from "../../../../lib/types";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
@@ -120,10 +120,6 @@ export default function Billing() {
   if (loading) return <div className="app-card app-muted">Loading billing…</div>;
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
-  const active = overview?.activeTier && overview.currentPeriodEnd
-    ? `${displayTier(overview.activeTier)} until ${new Date(overview.currentPeriodEnd).toLocaleDateString()}`
-    : "No active subscription";
-
   return (
     <div className="space-y-6">
       <div>
@@ -175,12 +171,8 @@ export default function Billing() {
         </div>
         <div className="app-card">
           <p className="text-lg font-semibold">Subscription summary</p>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between gap-4"><dt className="app-muted">Current plan</dt><dd className="font-medium text-right">{active}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{overview?.serviceCount ?? 0}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="app-muted">Selected plan</dt><dd className="font-medium">{displayTier(selectedTier)}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="app-muted">Payment method</dt><dd className="font-medium">EcoCash</dd></div>
-          </dl>
+          <SubscriptionSummary currentPlan={overview?.currentPlan ?? null} serviceCount={overview?.serviceCount ?? 0}
+            selectedTier={selectedTier} />
         </div>
       </div>
       <PaymentHistory
@@ -192,6 +184,34 @@ export default function Billing() {
       />
     </div>
   );
+}
+
+const currentPlanStatus = (status: PaymentStatus) => {
+  if (status === "SETTLED") return "Active · payment settled";
+  if (status === "PAID_AWAITING_DELIVERY") return "Active · awaiting delivery";
+  if (status === "DELIVERED_PENDING_SETTLEMENT") return "Active · settlement pending";
+  return status.replaceAll("_", " ").toLowerCase();
+};
+
+export function SubscriptionSummary({ currentPlan, serviceCount, selectedTier }: {
+  currentPlan: CurrentPlan | null;
+  serviceCount: number;
+  selectedTier: SubscriptionTier;
+}) {
+  if (!currentPlan) {
+    return <div className="mt-4 text-sm"><p className="font-medium">No active plan</p>
+      <p className="app-muted mt-2">You are currently on the free tier. Choose a plan to activate paid access.</p>
+      <dl className="mt-4 space-y-3"><div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="app-muted">Selected plan</dt><dd className="font-medium">{displayTier(selectedTier)}</dd></div></dl></div>;
+  }
+  return <div className="mt-4 text-sm"><dl className="space-y-3">
+    <div className="flex justify-between gap-4"><dt className="app-muted">Current plan</dt><dd className="font-medium">{displayTier(currentPlan.tier)}</dd></div>
+    <div className="flex justify-between gap-4"><dt className="app-muted">Status</dt><dd className="font-medium text-right">{currentPlanStatus(currentPlan.status)}</dd></div>
+    <div className="flex justify-between gap-4"><dt className="app-muted">Amount paid</dt><dd className="font-medium">{currentPlan.currency} {currentPlan.amountPaid.toFixed(2)}</dd></div>
+    <div className="flex justify-between gap-4"><dt className="app-muted">Purchased</dt><dd className="font-medium text-right">{formatDate(currentPlan.purchasedAt)}</dd></div>
+    <div className="flex justify-between gap-4"><dt className="app-muted">Access through</dt><dd className="font-medium text-right">{formatDate(currentPlan.periodEnd)}</dd></div>
+    <div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
+  </dl><p className="app-muted mt-4">Manual renewal — you will not be charged automatically.</p></div>;
 }
 
 export function PaymentState({ payment, timedOut, onRefresh }: { payment: PaymentResponse; timedOut: boolean; onRefresh: () => void }) {

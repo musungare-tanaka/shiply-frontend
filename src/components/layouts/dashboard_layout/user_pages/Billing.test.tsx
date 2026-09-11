@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { PaymentStatus } from "../../../../lib/types";
-import { PaymentHistory, PaymentState } from "./Billing";
+import { PaymentHistory, PaymentState, SubscriptionSummary } from "./Billing";
 import type { PaymentHistoryPage } from "../../../../lib/types";
 
 const messages: Record<PaymentStatus, string> = {
@@ -70,5 +70,22 @@ describe("PaymentHistory", () => {
     expect(screen.queryByText(/pollUrl|paynowReference|ecocashNumber/)).not.toBeInTheDocument();
     screen.getByRole("button", { name: "Next" }).click();
     expect(onPageChange).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("SubscriptionSummary", () => {
+  it("renders current plan details and manual renewal messaging", () => {
+    render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
+      currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
+      renewalMode: "MANUAL" }} serviceCount={2} selectedTier="PRO" />);
+    expect(screen.getByText("Pro")).toBeInTheDocument();
+    expect(screen.getByText("ZWG 260.00")).toBeInTheDocument();
+    expect(screen.getByText(/you will not be charged automatically/i)).toBeInTheDocument();
+  });
+
+  it("renders the free-tier state without an active plan", () => {
+    render(<SubscriptionSummary currentPlan={null} serviceCount={0} selectedTier="STARTER" />);
+    expect(screen.getByText("No active plan")).toBeInTheDocument();
+    expect(screen.getByText(/free tier/i)).toBeInTheDocument();
   });
 });

@@ -30,6 +30,17 @@ export interface BillingOverview {
   activeTier?: SubscriptionTier | null;
   currentPeriodEnd?: string | null;
   serviceCount: number;
+  currentPlan?: CurrentPlan | null;
+}
+
+export interface CurrentPlan {
+  tier: SubscriptionTier;
+  status: PaymentStatus;
+  amountPaid: number;
+  currency: string;
+  purchasedAt: string;
+  periodEnd: string;
+  renewalMode: "MANUAL";
 }
 
 export interface PaymentResponse {
