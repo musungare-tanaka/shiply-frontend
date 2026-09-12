@@ -62,11 +62,11 @@ const ProjectSettingsModal = ({ project, onClose }: ProjectSettingsModalProps) =
             <div className="mt-4 space-y-3 text-sm">
               <p className="flex items-start gap-2">
                 <CalendarDays size={16} className="mt-0.5 shrink-0 text-[var(--app-accent)]" />
-                <span>Created: {new Date(project.createdAt).toLocaleString()}</span>
+                <span>Created: {new Date(project.createdAt).toLocaleString(undefined, { timeZone: "Africa/Harare" })}</span>
               </p>
               <p className="flex items-start gap-2">
                 <CalendarDays size={16} className="mt-0.5 shrink-0 text-[var(--app-accent)]" />
-                <span>Updated: {new Date(project.updatedAt).toLocaleString()}</span>
+                <span>Updated: {new Date(project.updatedAt).toLocaleString(undefined, { timeZone: "Africa/Harare" })}</span>
               </p>
               <p className="app-muted">Services in project: {project.services?.length ?? 0}</p>
             </div>

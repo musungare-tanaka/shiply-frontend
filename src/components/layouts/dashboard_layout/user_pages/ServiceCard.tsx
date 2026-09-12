@@ -68,7 +68,7 @@ const ServiceCard = ({
               </span>
             </div>
             <p className="app-muted mt-1 text-xs">
-              Created {new Date(service.createdAt).toLocaleDateString()}
+              Created {new Date(service.createdAt).toLocaleDateString(undefined, { timeZone: "Africa/Harare" })}
             </p>
           </div>
         </div>

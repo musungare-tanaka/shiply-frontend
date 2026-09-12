@@ -9,7 +9,7 @@ import DeploymentStatusBadge from "./DeploymentStatusBadge";
 const formatTimestamp = (timestamp?: string | null) => {
   if (!timestamp) return "Waiting for first status event";
   const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? timestamp : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? timestamp : date.toLocaleString(undefined, { timeZone: "Africa/Harare" });
 };
 
 const DeploymentRow = ({ initialDeployment }: { initialDeployment: DeploymentStatusResponse }) => {

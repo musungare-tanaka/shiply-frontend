@@ -54,11 +54,11 @@ const ServiceSettingsModal = ({ service, onClose, onDeleted }: ServiceSettingsMo
             <p className="mt-2 break-all"><span className="font-semibold">Service ID:</span> {service.id}</p>
             <p className="mt-3 flex items-start gap-2">
               <CalendarDays size={16} className="mt-0.5 shrink-0 text-[var(--app-accent)]" />
-              <span>Created: {new Date(service.createdAt).toLocaleString()}</span>
+              <span>Created: {new Date(service.createdAt).toLocaleString(undefined, { timeZone: "Africa/Harare" })}</span>
             </p>
             <p className="mt-2 flex items-start gap-2">
               <CalendarDays size={16} className="mt-0.5 shrink-0 text-[var(--app-accent)]" />
-              <span>Updated: {new Date(service.updatedAt).toLocaleString()}</span>
+              <span>Updated: {new Date(service.updatedAt).toLocaleString(undefined, { timeZone: "Africa/Harare" })}</span>
             </p>
           </div>
 

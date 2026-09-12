@@ -185,7 +185,7 @@ const GitHubRepositoryPicker = ({
                           </div>
                           <p className="app-muted mt-2 text-sm">
                             {installation.lastRepositorySyncAt
-                              ? `Last synced ${new Date(installation.lastRepositorySyncAt).toLocaleString()}`
+                              ? `Last synced ${new Date(installation.lastRepositorySyncAt).toLocaleString(undefined, { timeZone: "Africa/Harare" })}`
                               : "Repository sync pending"}
                           </p>
                         </div>

@@ -37,6 +37,7 @@ const formatDate = (value?: string | null) => {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Africa/Harare",
   }).format(new Date(value));
 };
 

@@ -236,7 +236,9 @@ const statusTone = (status: PaymentStatus) => {
   return "bg-[var(--app-status-muted-bg)] text-[var(--app-status-muted-text)]";
 };
 
-const formatDate = (value?: string | null) => value ? new Date(value).toLocaleString() : "—";
+const formatDate = (value?: string | null) => value
+  ? new Date(value).toLocaleString(undefined, { timeZone: "Africa/Harare" })
+  : "—";
 const formatMethod = (value: string) => value === "ECOCASH" ? "EcoCash" : value;
 
 function HistoryStatus({ item }: { item: PaymentHistoryItem }) {
