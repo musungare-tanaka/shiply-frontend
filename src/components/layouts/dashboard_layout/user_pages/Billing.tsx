@@ -6,6 +6,7 @@ import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPa
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
 const HISTORY_REFRESH_MS = 15000;
+export const PAYMENT_HISTORY_PAGE_SIZE = 5;
 const displayTier = (tier: string) => tier.charAt(0) + tier.slice(1).toLowerCase();
 const isEntitlementState = (status: PaymentResponse["status"]) =>
   status === "PAID_AWAITING_DELIVERY" || status === "DELIVERED_PENDING_SETTLEMENT" || status === "SETTLED";
@@ -47,7 +48,7 @@ export default function Billing() {
     try {
       do {
         historyRefreshQueued.current = false;
-        const data = await getPaymentHistory({ page, size: 20 });
+        const data = await getPaymentHistory({ page, size: PAYMENT_HISTORY_PAGE_SIZE });
         setHistory(data);
       } while (historyRefreshQueued.current);
     } catch (reason) {
@@ -117,6 +118,12 @@ export default function Billing() {
     }
   };
 
+  const changeHistoryPage = (page: number) => {
+    if (historyLoading || page < 0 || (history && page >= history.totalPages)) return;
+    setHistoryLoading(true);
+    setHistoryPage(page);
+  };
+
   if (loading) return <div className="app-card app-muted">Loading billing…</div>;
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
@@ -180,7 +187,7 @@ export default function Billing() {
         loading={historyLoading}
         error={historyError}
         onRetry={() => void loadHistory(historyPage)}
-        onPageChange={setHistoryPage}
+        onPageChange={changeHistoryPage}
       />
     </div>
   );
@@ -242,7 +249,7 @@ const formatDate = (value?: string | null) => value
 const formatMethod = (value: string) => value === "ECOCASH" ? "EcoCash" : value;
 
 function HistoryStatus({ item }: { item: PaymentHistoryItem }) {
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.status)}`}>{item.statusLabel}</span>;
+  return <span className={`inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-semibold leading-tight ${statusTone(item.status)}`}>{item.statusLabel}</span>;
 }
 
 export function PaymentHistory({ history, loading, error, onRetry, onPageChange }: {
@@ -253,29 +260,39 @@ export function PaymentHistory({ history, loading, error, onRetry, onPageChange 
   onPageChange: (page: number) => void;
 }) {
   return (
-    <section className="app-card" aria-labelledby="payment-history-title">
-      <div>
-        <h2 id="payment-history-title" className="text-lg font-semibold">Payment history</h2>
-        <p className="app-muted mt-1 text-sm">All payment attempts associated with your account.</p>
+    <section className="app-card overflow-hidden" aria-labelledby="payment-history-title" aria-busy={loading}>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div>
+          <h2 id="payment-history-title" className="text-lg font-semibold">Payment history</h2>
+          <p className="app-muted mt-1 text-sm">Recent payment attempts associated with your account.</p>
+        </div>
+        {history && history.totalElements > 0 ? (
+          <p className="app-muted shrink-0 text-sm sm:pt-1">
+            {history.totalElements} {history.totalElements === 1 ? "transaction" : "transactions"}
+          </p>
+        ) : null}
       </div>
-      {loading ? <div className="app-muted mt-6 animate-pulse" role="status">Loading payment history…</div> : null}
+      {loading && !history ? <div className="app-muted mt-6 animate-pulse" role="status">Loading payment history…</div> : null}
+      {loading && history ? <p className="app-muted mt-3 animate-pulse text-xs" role="status">Updating payment history…</p> : null}
       {!loading && error ? <div className="app-warning-panel mt-6"><p>{error}</p><button type="button" className="app-button-secondary mt-3" onClick={onRetry}>Retry</button></div> : null}
       {!loading && !error && history?.content.length === 0 ? <p className="app-muted mt-6">No payment attempts yet.</p> : null}
-      {!loading && !error && history && history.content.length > 0 ? (
-        <>
-          <div className="mt-6 hidden overflow-x-auto md:block">
-            <table className="w-full text-left text-sm">
-              <thead className="app-muted border-b border-[var(--app-border)]"><tr><th className="pb-3 pr-4">Date</th><th className="pb-3 pr-4">Reference</th><th className="pb-3 pr-4">Plan</th><th className="pb-3 pr-4">Amount</th><th className="pb-3 pr-4">Method</th><th className="pb-3">Status</th></tr></thead>
-              <tbody>{history.content.map((item) => <tr key={item.merchantReference} className="border-b border-[var(--app-border)] align-top"><td className="py-4 pr-4 whitespace-nowrap">{formatDate(item.createdAt)}</td><td className="py-4 pr-4 font-mono text-xs">{item.merchantReference}</td><td className="py-4 pr-4">{displayTier(item.subscriptionTier)}</td><td className="py-4 pr-4 whitespace-nowrap">{item.currency} {item.amount.toFixed(2)}</td><td className="py-4 pr-4">{formatMethod(item.paymentChannel)}</td><td className="py-4"><HistoryStatus item={item} /><p className="app-muted mt-2 max-w-xs text-xs">{item.message}</p>{item.completedAt ? <p className="app-muted mt-1 text-xs">Completed: {formatDate(item.completedAt)}</p> : null}</td></tr>)}</tbody>
+      {!error && history && history.content.length > 0 ? (
+        <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
+          <div className="mt-5 hidden overflow-x-auto md:block">
+            <table className="w-full table-fixed text-left text-sm">
+              <thead className="app-muted border-b border-[var(--app-border)] text-xs uppercase tracking-wide"><tr><th className="w-[18%] pb-2.5 pr-3 font-medium">Date</th><th className="w-[20%] pb-2.5 pr-3 font-medium">Reference</th><th className="w-[10%] pb-2.5 pr-3 font-medium">Plan</th><th className="w-[13%] pb-2.5 pr-3 font-medium">Amount</th><th className="w-[11%] pb-2.5 pr-3 font-medium">Method</th><th className="w-[28%] pb-2.5 font-medium">Status</th></tr></thead>
+              <tbody>{history.content.map((item) => <tr key={item.merchantReference} className="border-b border-[var(--app-border)] align-top last:border-b-0"><td className="py-3 pr-3 text-xs leading-5">{formatDate(item.createdAt)}</td><td className="py-3 pr-3"><p className="truncate font-mono text-xs" title={item.merchantReference}>{item.merchantReference}</p></td><td className="py-3 pr-3">{displayTier(item.subscriptionTier)}</td><td className="whitespace-nowrap py-3 pr-3 font-medium">{item.currency} {item.amount.toFixed(2)}</td><td className="py-3 pr-3">{formatMethod(item.paymentChannel)}</td><td className="py-3"><HistoryStatus item={item} /><p className="app-muted mt-1.5 line-clamp-2 text-xs leading-4" title={item.message}>{item.message}</p>{item.completedAt ? <p className="app-muted mt-1 truncate text-xs" title={`Completed: ${formatDate(item.completedAt)}`}>Completed: {formatDate(item.completedAt)}</p> : null}</td></tr>)}</tbody>
             </table>
           </div>
-          <div className="mt-6 space-y-3 md:hidden">{history.content.map((item) => <article key={item.merchantReference} className="app-surface-soft rounded-2xl border border-[var(--app-border)] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{displayTier(item.subscriptionTier)}</p><p className="app-muted mt-1 font-mono text-xs break-all">{item.merchantReference}</p></div><HistoryStatus item={item} /></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="app-muted text-xs">Date</dt><dd>{formatDate(item.createdAt)}</dd></div><div><dt className="app-muted text-xs">Amount</dt><dd>{item.currency} {item.amount.toFixed(2)}</dd></div><div><dt className="app-muted text-xs">Method</dt><dd>{formatMethod(item.paymentChannel)}</dd></div><div><dt className="app-muted text-xs">Completed</dt><dd>{formatDate(item.completedAt)}</dd></div></dl><p className="app-muted mt-3 text-xs">{item.message}</p></article>)}</div>
-          <div className="mt-5 flex items-center justify-between gap-4">
-            <button type="button" className="app-button-secondary" disabled={history.page <= 0} onClick={() => onPageChange(history.page - 1)}>Previous</button>
-            <p className="app-muted text-sm">Page {history.page + 1} of {Math.max(history.totalPages, 1)}</p>
-            <button type="button" className="app-button-secondary" disabled={history.page >= history.totalPages - 1} onClick={() => onPageChange(history.page + 1)}>Next</button>
+          <div className="mt-4 space-y-2.5 md:hidden">{history.content.map((item) => <article key={item.merchantReference} className="app-surface-soft rounded-xl border border-[var(--app-border)] p-3"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="font-semibold">{item.currency} {item.amount.toFixed(2)}</p><p className="app-muted mt-0.5 truncate font-mono text-xs" title={item.merchantReference}>{item.merchantReference}</p></div><div className="shrink-0"><HistoryStatus item={item} /></div></div><dl className="mt-3 space-y-1.5 text-xs"><div className="flex justify-between gap-3"><dt className="app-muted">Plan and method</dt><dd className="text-right font-medium">{displayTier(item.subscriptionTier)} · {formatMethod(item.paymentChannel)}</dd></div><div className="flex justify-between gap-3"><dt className="app-muted shrink-0">Created</dt><dd className="text-right">{formatDate(item.createdAt)}</dd></div>{item.completedAt ? <div className="flex justify-between gap-3"><dt className="app-muted shrink-0">Completed</dt><dd className="text-right">{formatDate(item.completedAt)}</dd></div> : null}</dl><p className="app-muted mt-2 border-t border-[var(--app-border)] pt-2 text-xs leading-4">{item.message}</p></article>)}</div>
+          <div className="mt-5 flex flex-col gap-3 border-t border-[var(--app-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="app-muted text-center text-sm sm:text-left" aria-live="polite">Page {history.page + 1} of {Math.max(history.totalPages, 1)}</p>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <button type="button" className="app-button-secondary min-w-0 flex-1 sm:flex-none" disabled={loading || history.page <= 0} onClick={() => onPageChange(history.page - 1)}>Previous</button>
+              <button type="button" className="app-button-secondary min-w-0 flex-1 sm:flex-none" disabled={loading || history.page >= history.totalPages - 1} onClick={() => onPageChange(history.page + 1)}>Next</button>
+            </div>
           </div>
-        </>
+        </div>
       ) : null}
     </section>
   );

@@ -1,8 +1,21 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentStatus } from "../../../../lib/types";
-import { PaymentHistory, PaymentState, SubscriptionSummary } from "./Billing";
+import Billing, { PaymentHistory, PaymentState, SubscriptionSummary } from "./Billing";
 import type { PaymentHistoryPage } from "../../../../lib/types";
+
+const apiMocks = vi.hoisted(() => ({
+  getBillingOverview: vi.fn(),
+  getPaymentHistory: vi.fn(),
+  getPaymentStatus: vi.fn(),
+  initiatePayment: vi.fn(),
+}));
+
+vi.mock("../../../../lib/api", () => apiMocks);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const messages: Record<PaymentStatus, string> = {
   PENDING: "Waiting for customer payment",
@@ -46,10 +59,21 @@ const history: PaymentHistoryPage = {
     completedAt: "2026-09-10T10:01:00",
   }],
   page: 0,
-  size: 20,
+  size: 5,
   totalElements: 21,
-  totalPages: 2,
+  totalPages: 5,
 };
+
+describe("Billing payment history loading", () => {
+  it("requests the first five transactions", async () => {
+    apiMocks.getBillingOverview.mockResolvedValue({ enabled: false, tiers: [], serviceCount: 0 });
+    apiMocks.getPaymentHistory.mockResolvedValue(history);
+
+    render(<Billing />);
+
+    await waitFor(() => expect(apiMocks.getPaymentHistory).toHaveBeenCalledWith({ page: 0, size: 5 }));
+  });
+});
 
 describe("PaymentHistory", () => {
   it("renders loading, empty, and error states", () => {
@@ -64,12 +88,25 @@ describe("PaymentHistory", () => {
 
   it("renders responsive records and changes pages", async () => {
     const onPageChange = vi.fn();
-    render(<PaymentHistory history={history} loading={false} error="" onRetry={vi.fn()} onPageChange={onPageChange} />);
+    const { rerender } = render(<PaymentHistory history={history} loading={false} error="" onRetry={vi.fn()} onPageChange={onPageChange} />);
     expect(screen.getAllByText("SHIPLY-HISTORY-1")).toHaveLength(2);
     expect(screen.getAllByText("Paid")).toHaveLength(2);
+    expect(screen.getByText("21 transactions")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 5")).toBeInTheDocument();
     expect(screen.queryByText(/pollUrl|paynowReference|ecocashNumber/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
     screen.getByRole("button", { name: "Next" }).click();
     expect(onPageChange).toHaveBeenCalledWith(1);
+
+    rerender(<PaymentHistory history={{ ...history, page: 1 }} loading error="" onRetry={vi.fn()} onPageChange={onPageChange} />);
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("disables next on the final page", () => {
+    render(<PaymentHistory history={{ ...history, page: 4 }} loading={false} error="" onRetry={vi.fn()} onPageChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Previous" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 });
 
