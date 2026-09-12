@@ -31,7 +31,10 @@ declare global {
   }
 }
 
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || "";
+export const GOOGLE_CLIENT_ID =
+  import.meta.env.GOOGLE_CLIENT_ID?.trim() ||
+  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ||
+  "";
 
 export const isGoogleIdentityEnabled =
   GOOGLE_CLIENT_ID.length > 0 &&

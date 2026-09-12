@@ -122,7 +122,7 @@ const Signup = () => {
         </>
       ) : (
         <p className="mb-6 text-center text-xs text-gray-400">
-          Google sign-in is disabled locally until `VITE_GOOGLE_CLIENT_ID` is configured.
+          Google sign-in is disabled locally until `GOOGLE_CLIENT_ID` is configured.
         </p>
       )}
 

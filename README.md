@@ -7,7 +7,7 @@
 
 ## Environment variables
 - `VITE_API_BASE_URL`: public backend URL for Vercel, for example `http://shiplygateway.thetalisman.co.zw`
-- `VITE_GOOGLE_CLIENT_ID`: Google OAuth client ID used by the login and signup screens
+- `GOOGLE_CLIENT_ID`: Google OAuth client ID used by the login and signup screens. Vite exposes only this specific unprefixed variable to the browser bundle.
 
 ## GitHub App import flow
 - The GitHub App setup URL must point to `/projects/import/github`.
