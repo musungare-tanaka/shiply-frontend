@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { CreditCard, FolderOpen, LayoutDashboard, Settings, Shield, Zap } from "lucide-react";
-import { getCurrentUserEmail, getCurrentUserFullName, isAdmin, logout } from "../../../util/auth";
+import { getCurrentUserFullName, isAdmin, logout } from "../../../util/auth";
 import ThemeToggle, {
   type DashboardTheme,
 } from "../dashboard_layout/ThemeToggle";
@@ -96,9 +96,6 @@ const SideNav = ({ onNavClick, onToggleTheme, theme }: SideNavProps) => {
           </p>
           <p className="mt-1 text-sm font-semibold">
             {getCurrentUserFullName() || "Shiply User"}
-          </p>
-          <p className="mt-1 break-all text-sm font-semibold">
-            {getCurrentUserEmail()}
           </p>
         </div>
 

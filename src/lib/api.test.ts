@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -50,6 +50,15 @@ describe("deployment API calls", () => {
         body: JSON.stringify({ tier: "STARTER", ecocashNumber: "0771234567", saveNumber: true }),
       }));
     expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:9091/api/payments/SHIPLY-1");
+  });
+
+  it("cancels the active subscription", async () => {
+    const overview = { enabled: true, tiers: [], activeTier: "FREE", serviceCount: 0 };
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+
+    await expect(cancelSubscription()).resolves.toEqual(overview);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/payments/subscription/cancel"),
+      expect.objectContaining({ method: "POST" }));
   });
 
   it("loads authenticated payment history with encoded filters", async () => {

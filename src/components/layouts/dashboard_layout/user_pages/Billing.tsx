@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getBillingOverview, getPaymentHistory, getPaymentStatus, initiatePayment } from "../../../../lib/api";
+import { cancelSubscription, getBillingOverview, getPaymentHistory, getPaymentStatus, initiatePayment } from "../../../../lib/api";
 import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, SubscriptionTier } from "../../../../lib/types";
 
 const POLL_INTERVAL_MS = 3000;
@@ -23,6 +23,7 @@ export default function Billing() {
   const [payment, setPayment] = useState<PaymentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<PaymentHistoryPage | null>(null);
@@ -131,6 +132,20 @@ export default function Billing() {
     setHistoryPage(page);
   };
 
+  const cancelCurrentSubscription = async () => {
+    if (!window.confirm("Cancel your subscription immediately? You will lose the remaining paid access and your account will return to the Free plan.")) return;
+    setCancelling(true);
+    setError("");
+    try {
+      setOverview(await cancelSubscription());
+      setPlansExpanded(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not cancel the subscription");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) return <div className="app-card app-muted">Loading billing…</div>;
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
@@ -157,7 +172,9 @@ export default function Billing() {
       <SubscriptionSummary currentPlan={currentPlan} effectiveTier={effectiveTierName}
         serviceCount={overview?.serviceCount ?? 0} tierOption={currentTier}
         canUpgrade={canUpgrade} onUpgrade={() => setPlansExpanded((expanded) => !expanded)}
-        plansExpanded={plansExpanded} />
+        plansExpanded={plansExpanded} onCancel={currentPlan ? () => void cancelCurrentSubscription() : undefined}
+        cancelling={cancelling} />
+      {error && !showPlanOptions ? <div className="app-warning-panel" role="alert">{error}</div> : null}
       {showPlanOptions ? <section id="plan-options" className="space-y-4" aria-label="Available subscription plans">
         <div className="grid gap-3 md:grid-cols-3">
           {eligibleTiers.map((tier) => (
@@ -216,7 +233,7 @@ const currentPlanStatus = (status: PaymentStatus) => {
   return status.replaceAll("_", " ").toLowerCase();
 };
 
-export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, tierOption, canUpgrade, onUpgrade, plansExpanded = false }: {
+export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, tierOption, canUpgrade, onUpgrade, plansExpanded = false, onCancel, cancelling = false }: {
   currentPlan: CurrentPlan | null;
   effectiveTier: SubscriptionTier;
   serviceCount: number;
@@ -224,6 +241,8 @@ export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, 
   canUpgrade: boolean;
   onUpgrade?: () => void;
   plansExpanded?: boolean;
+  onCancel?: () => void;
+  cancelling?: boolean;
 }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   return <section id="current-subscription" className="app-card scroll-mt-4 p-4 sm:p-4" aria-labelledby="current-subscription-title">
@@ -246,6 +265,12 @@ export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, 
         <div><dt className="app-muted text-xs">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
         <div><dt className="app-muted text-xs">Plan allowance</dt><dd className="font-medium">{tierOption ? `Up to ${tierOption.maxServices} services` : "—"}</dd></div></dl>
       <p className="app-muted mt-2 text-xs">{currentPlan ? "Manual renewal — you will not be charged automatically." : "Upgrade only when you need more services."}</p>
+      {currentPlan && onCancel ? <div className="mt-3 border-t border-[var(--app-border)] pt-3">
+        <button type="button" className="app-button-secondary text-red-700" disabled={cancelling} onClick={onCancel}>
+          {cancelling ? "Cancelling…" : "Cancel subscription"}
+        </button>
+        <p className="app-muted mt-2 text-xs">Cancellation is immediate. Your account returns to the Free plan and unused prepaid time is forfeited.</p>
+      </div> : null}
     </div> : null}
   </section>;
 }

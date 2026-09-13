@@ -10,6 +10,7 @@ const apiMocks = vi.hoisted(() => ({
   getPaymentHistory: vi.fn(),
   getPaymentStatus: vi.fn(),
   initiatePayment: vi.fn(),
+  cancelSubscription: vi.fn(),
 }));
 
 vi.mock("../../../../lib/api", () => apiMocks);
@@ -200,5 +201,19 @@ describe("SubscriptionSummary", () => {
       renewalMode: "MANUAL" }} effectiveTier="BUSINESS" serviceCount={4} canUpgrade={false}
       tierOption={{ zwgPrice: 650, maxServices: 12 }} />);
     expect(screen.queryByRole("button", { name: "Upgrade plan" })).not.toBeInTheDocument();
+  });
+
+  it("offers immediate cancellation in active-plan details", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
+      currency: "ZWG", purchasedAt: "2026-09-10T10:00:00Z", periodEnd: "2027-09-10T10:00:00Z",
+      renewalMode: "MANUAL" }} effectiveTier="PRO" serviceCount={2} canUpgrade onCancel={onCancel}
+      tierOption={{ zwgPrice: 260, maxServices: 5 }} />);
+
+    await user.click(screen.getByRole("button", { name: /View details/ }));
+    await user.click(screen.getByRole("button", { name: "Cancel subscription" }));
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(screen.getByText(/unused prepaid time is forfeited/i)).toBeInTheDocument();
   });
 });

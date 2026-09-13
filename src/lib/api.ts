@@ -126,6 +126,12 @@ export const createApplicationService = (projectId: string, input: CreateApplica
 export const getBillingOverview = () =>
   request<BillingOverview>("/api/payments/overview", { headers: buildHeaders() });
 
+export const cancelSubscription = () =>
+  request<BillingOverview>("/api/payments/subscription/cancel", {
+    method: "POST",
+    headers: buildHeaders(),
+  });
+
 export const initiatePayment = (tier: SubscriptionTier, ecocashNumber: string, saveNumber: boolean) =>
   request<PaymentResponse>("/api/payments", {
     method: "POST",
