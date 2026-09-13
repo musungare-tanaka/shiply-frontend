@@ -26,11 +26,15 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || "http://local
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
+  details?: Record<string, unknown>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string, details?: Record<string, unknown>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -47,23 +51,23 @@ const buildHeaders = () => {
 };
 
 const handleUnauthorized = (status: number) => {
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     logout();
     window.location.href = "/login";
   }
 };
 
-const readErrorMessage = async (response: Response, fallback: string) => {
+const readError = async (response: Response, fallback: string) => {
   try {
     const data = await response.json();
-    if (typeof data?.message === "string" && data.message.trim()) {
-      return data.message.trim();
-    }
+    return {
+      message: typeof data?.message === "string" && data.message.trim() ? data.message.trim() : fallback,
+      code: typeof data?.code === "string" ? data.code : undefined,
+      details: data?.details && typeof data.details === "object" ? data.details as Record<string, unknown> : undefined,
+    };
   } catch {
-    // Ignore parse failures and fall back to the default.
+    return { message: fallback };
   }
-
-  return fallback;
 };
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -71,7 +75,8 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
   if (!response.ok) {
     handleUnauthorized(response.status);
-    throw new ApiError(await readErrorMessage(response, "Request failed"), response.status);
+    const error = await readError(response, "Request failed");
+    throw new ApiError(error.message, response.status, error.code, error.details);
   }
 
   if (response.status === 204) {

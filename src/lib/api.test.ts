@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { ApiError, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -61,5 +61,25 @@ describe("deployment API calls", () => {
       "http://localhost:9091/api/payments/history?page=1&size=20&status=REFUNDED&from=2026-09-01&to=2026-09-10",
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer test-token" }) }),
     );
+  });
+
+  it("preserves structured service-limit errors without logging the user out", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 403, json: async () => ({
+      message: "Your Free plan allows up to 1 service.",
+      code: "SERVICE_LIMIT_REACHED",
+      details: { tier: "FREE", serviceCount: 1, maxServices: 1 },
+    }) });
+
+    let error: unknown;
+    try {
+      await getBillingOverview();
+    } catch (reason) {
+      error = reason;
+    }
+    expect(error).toBeInstanceOf(ApiError);
+    if (!(error instanceof ApiError)) throw new Error("Expected ApiError");
+    expect(error.code).toBe("SERVICE_LIMIT_REACHED");
+    expect(error.details).toEqual({ tier: "FREE", serviceCount: 1, maxServices: 1 });
+    expect(localStorage.getItem("token")).toBe("test-token");
   });
 });

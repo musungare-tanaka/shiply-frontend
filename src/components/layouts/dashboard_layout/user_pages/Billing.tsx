@@ -17,7 +17,7 @@ const isHistoryRefreshState = (status: PaymentStatus) => isProgressingState(stat
 export default function Billing() {
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
-  const [plansExpanded, setPlansExpanded] = useState(false);
+  const [plansExpanded, setPlansExpanded] = useState(() => new URLSearchParams(window.location.search).get("upgrade") === "1");
   const [mobileNumber, setMobileNumber] = useState("");
   const [saveNumber, setSaveNumber] = useState(true);
   const [payment, setPayment] = useState<PaymentResponse | null>(null);
@@ -36,7 +36,12 @@ export default function Billing() {
   const loadOverview = useCallback(async () => {
     const data = await getBillingOverview();
     setOverview(data);
-    setSelectedTier(data.currentPlan?.tier ?? data.activeTier ?? "STARTER");
+    const activeOrder = data.tiers.find((tier) => tier.tier === (data.activeTier ?? "FREE"))?.hierarchyOrder ?? 0;
+    const nextTier = [...data.tiers]
+      .sort((left, right) => left.hierarchyOrder - right.hierarchyOrder)
+      .find((tier) => tier.hierarchyOrder > activeOrder);
+    if (nextTier) setSelectedTier(nextTier.tier);
+    else setPlansExpanded(false);
     setMobileNumber((current) => current || data.ecocashNumber || "");
   }, []);
 
@@ -130,8 +135,13 @@ export default function Billing() {
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
   const currentPlan = overview?.currentPlan ?? null;
-  const currentTier = currentPlan ? overview?.tiers.find((tier) => tier.tier === currentPlan.tier) : undefined;
-  const showPlanOptions = !currentPlan || plansExpanded;
+  const effectiveTierName = overview?.activeTier ?? "FREE";
+  const currentTier = overview?.tiers.find((tier) => tier.tier === effectiveTierName);
+  const eligibleTiers = [...(overview?.tiers ?? [])]
+    .filter((tier) => tier.hierarchyOrder > (currentTier?.hierarchyOrder ?? 0))
+    .sort((left, right) => left.hierarchyOrder - right.hierarchyOrder);
+  const canUpgrade = eligibleTiers.length > 0;
+  const showPlanOptions = plansExpanded && canUpgrade;
   return (
     <div className="space-y-5">
       <div>
@@ -144,15 +154,14 @@ export default function Billing() {
           <p className="mt-2 text-sm">Paynow has not been enabled for this environment. No payment can be submitted.</p>
         </div>
       ) : null}
-      {currentPlan ? (
-        <SubscriptionSummary currentPlan={currentPlan} serviceCount={overview?.serviceCount ?? 0}
-          selectedTier={selectedTier} tierOption={currentTier}
-          onManage={() => setPlansExpanded((expanded) => !expanded)} plansExpanded={plansExpanded} />
-      ) : null}
+      <SubscriptionSummary currentPlan={currentPlan} effectiveTier={effectiveTierName}
+        serviceCount={overview?.serviceCount ?? 0} tierOption={currentTier}
+        canUpgrade={canUpgrade} onUpgrade={() => setPlansExpanded((expanded) => !expanded)}
+        plansExpanded={plansExpanded} />
       {showPlanOptions ? <section id="plan-options" className="space-y-4" aria-label="Available subscription plans">
         <div className="grid gap-3 md:grid-cols-3">
-          {overview?.tiers.map((tier) => (
-            <button key={tier.tier} type="button" disabled={!overview.enabled || submitting}
+          {eligibleTiers.map((tier) => (
+            <button key={tier.tier} type="button" disabled={!overview?.enabled || submitting}
               onClick={() => setSelectedTier(tier.tier)}
               className={`app-card p-4 text-left transition ${selectedTier === tier.tier ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
               <p className="font-semibold">{displayTier(tier.tier)}</p>
@@ -161,7 +170,7 @@ export default function Billing() {
             </button>
           ))}
         </div>
-        <div className={`grid gap-4 ${currentPlan ? "" : "xl:grid-cols-[minmax(0,0.85fr)_minmax(18rem,0.65fr)]"}`}>
+        <div className="grid gap-4">
           <div className="app-card max-w-2xl p-4 sm:p-4">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-[var(--app-accent-soft)] p-2 text-[var(--app-accent)]"><Smartphone size={19} /></div>
@@ -187,8 +196,6 @@ export default function Billing() {
             </button>
           </form>
           </div>
-          {!currentPlan ? <SubscriptionSummary currentPlan={null} serviceCount={overview?.serviceCount ?? 0}
-            selectedTier={selectedTier} tierOption={selected} /> : null}
         </div>
       </section> : null}
       <PaymentHistory
@@ -209,40 +216,36 @@ const currentPlanStatus = (status: PaymentStatus) => {
   return status.replaceAll("_", " ").toLowerCase();
 };
 
-export function SubscriptionSummary({ currentPlan, serviceCount, selectedTier, tierOption, onManage, plansExpanded = false }: {
+export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, tierOption, canUpgrade, onUpgrade, plansExpanded = false }: {
   currentPlan: CurrentPlan | null;
+  effectiveTier: SubscriptionTier;
   serviceCount: number;
-  selectedTier: SubscriptionTier;
   tierOption?: { zwgPrice: number; maxServices: number };
-  onManage?: () => void;
+  canUpgrade: boolean;
+  onUpgrade?: () => void;
   plansExpanded?: boolean;
 }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  if (!currentPlan) {
-    return <div className="app-card text-sm"><p className="font-medium">No active plan</p>
-      <p className="app-muted mt-2">You are currently on the free tier. Choose a plan to activate paid access.</p>
-      <dl className="mt-4 space-y-3"><div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
-        <div className="flex justify-between gap-4"><dt className="app-muted">Selected plan</dt><dd className="font-medium">{displayTier(selectedTier)}</dd></div></dl></div>;
-  }
   return <section id="current-subscription" className="app-card scroll-mt-4 p-4 sm:p-4" aria-labelledby="current-subscription-title">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div><p className="app-muted text-xs font-medium uppercase tracking-wide">Current subscription</p>
-        <h2 id="current-subscription-title" className="mt-1 text-lg font-semibold">{displayTier(currentPlan.tier)}</h2></div>
-      {onManage ? <button type="button" className="app-button-secondary" onClick={onManage}
-        aria-expanded={plansExpanded} aria-controls="plan-options">{plansExpanded ? "Hide plan options" : "Manage subscription"}</button> : null}
+        <h2 id="current-subscription-title" className="mt-1 text-lg font-semibold">{displayTier(effectiveTier)}</h2></div>
+      {canUpgrade && onUpgrade ? <button type="button" className="app-button-primary" onClick={onUpgrade}
+        aria-expanded={plansExpanded} aria-controls="plan-options">{plansExpanded ? "Hide upgrade options" : "Upgrade plan"}</button> : null}
     </div>
     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-      <div><dt className="app-muted text-xs">Status</dt><dd className="mt-0.5 font-medium">{currentPlanStatus(currentPlan.status)}</dd></div>
-      <div><dt className="app-muted text-xs">Price</dt><dd className="mt-0.5 font-medium">{currentPlan.currency} {(tierOption?.zwgPrice ?? currentPlan.amountPaid).toFixed(2)} / month</dd></div>
-      <div><dt className="app-muted text-xs">Next billing / access date</dt><dd className="mt-0.5 font-medium">{formatDate(currentPlan.periodEnd)}</dd></div>
+      <div><dt className="app-muted text-xs">Status</dt><dd className="mt-0.5 font-medium">{currentPlan ? currentPlanStatus(currentPlan.status) : "Active"}</dd></div>
+      <div><dt className="app-muted text-xs">Price</dt><dd className="mt-0.5 font-medium">{currentPlan ? `${currentPlan.currency} ${(tierOption?.zwgPrice ?? currentPlan.amountPaid).toFixed(2)} / month` : "Free"}</dd></div>
+      <div><dt className="app-muted text-xs">Services</dt><dd className="mt-0.5 font-medium">{serviceCount} used / {tierOption?.maxServices ?? 1} allowed</dd></div>
     </dl>
     <button type="button" className="app-link mt-3 inline-flex items-center gap-1" onClick={() => setDetailsExpanded((expanded) => !expanded)}
       aria-expanded={detailsExpanded} aria-controls="subscription-details">View details <ChevronDown size={15} className={detailsExpanded ? "rotate-180" : ""} /></button>
     {detailsExpanded ? <div id="subscription-details" className="app-surface-soft mt-3 rounded-xl border border-[var(--app-border)] p-3 text-sm">
-      <dl className="grid gap-2 sm:grid-cols-3"><div><dt className="app-muted text-xs">Purchased</dt><dd className="font-medium">{formatDate(currentPlan.purchasedAt)}</dd></div>
+      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="app-muted text-xs">Purchased</dt><dd className="font-medium">{currentPlan ? formatDate(currentPlan.purchasedAt) : "Not applicable"}</dd></div>
+        <div><dt className="app-muted text-xs">Access through</dt><dd className="font-medium">{currentPlan ? formatDate(currentPlan.periodEnd) : "Ongoing"}</dd></div>
         <div><dt className="app-muted text-xs">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
         <div><dt className="app-muted text-xs">Plan allowance</dt><dd className="font-medium">{tierOption ? `Up to ${tierOption.maxServices} services` : "—"}</dd></div></dl>
-      <p className="app-muted mt-2 text-xs">Manual renewal — you will not be charged automatically.</p>
+      <p className="app-muted mt-2 text-xs">{currentPlan ? "Manual renewal — you will not be charged automatically." : "Upgrade only when you need more services."}</p>
     </div> : null}
   </section>;
 }

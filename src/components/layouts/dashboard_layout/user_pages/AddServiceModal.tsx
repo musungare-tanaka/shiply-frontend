@@ -21,6 +21,7 @@ import {
   getGitHubInstallations,
   getGitHubRepositoriesByInstallation,
   refreshGitHubInstallation,
+  ApiError,
 } from "../../../../lib/api";
 import type {
   ApplicationEnvironmentVariable,
@@ -93,6 +94,7 @@ interface AddServiceModalProps {
   project: Project;
   onClose: () => void;
   onCreated: () => Promise<void> | void;
+  onUpgrade?: () => void;
 }
 
 interface DraftPayload {
@@ -127,7 +129,7 @@ const defaultApplicationInput: CreateApplicationServiceInput = {
   autoDeployEnabled: true,
 };
 
-const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) => {
+const AddServiceModal = ({ project, onClose, onCreated, onUpgrade }: AddServiceModalProps) => {
   const { showToast } = useToast();
 
   const [step, setStep] = useState(1);
@@ -136,6 +138,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [databaseDirty, setDatabaseDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serviceLimitMessage, setServiceLimitMessage] = useState<string | null>(null);
   const [databaseInput, setDatabaseInput] = useState<CreateDatabaseServiceInput>({
     name: "",
     databaseType: "POSTGRESQL",
@@ -556,6 +559,7 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
 
     setIsSubmitting(true);
     setErrors({});
+    setServiceLimitMessage(null);
 
     const applicationPayload: CreateApplicationServiceInput = {
       ...applicationInput,
@@ -607,6 +611,11 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
         return;
       }
     } catch (error) {
+      if (error instanceof ApiError && error.code === "SERVICE_LIMIT_REACHED") {
+        setServiceLimitMessage(error.message);
+        showToast(error.message, "error");
+        return;
+      }
       showToast(error instanceof Error ? error.message : "Failed to create service", "error");
     } finally {
       setIsSubmitting(false);
@@ -661,6 +670,16 @@ const AddServiceModal = ({ project, onClose, onCreated }: AddServiceModalProps) 
             <X size={18} />
           </button>
         </div>
+
+        {serviceLimitMessage ? (
+          <div className="app-warning-panel mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <div><p className="font-semibold">Service limit reached</p><p className="mt-1 text-sm">{serviceLimitMessage}</p></div>
+            <button type="button" className="app-button-primary shrink-0" onClick={() => {
+              onClose();
+              onUpgrade?.();
+            }}>Upgrade plan</button>
+          </div>
+        ) : null}
 
         {step === 1 ? (
           <div className="space-y-6">

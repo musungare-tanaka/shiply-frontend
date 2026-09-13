@@ -5,6 +5,7 @@ import AddServiceModal from "./AddServiceModal";
 import { ToastContext } from "../../../../hooks/useToast";
 import type { GitHubInstallationConnection, GitHubRepository, Project } from "../../../../lib/types";
 import {
+  ApiError,
   analyzeGitHubRepository,
   createApplicationService,
   createDatabaseService,
@@ -16,6 +17,15 @@ import {
 } from "../../../../lib/api";
 
 vi.mock("../../../../lib/api", () => ({
+  ApiError: class ApiError extends Error {
+    status: number;
+    code?: string;
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.status = status;
+      this.code = code;
+    }
+  },
   analyzeGitHubRepository: vi.fn(),
   createApplicationService: vi.fn(),
   createDatabaseService: vi.fn(),
@@ -146,6 +156,24 @@ describe("AddServiceModal", () => {
     showToast.mockReset();
     vi.clearAllMocks();
     configureGitHubMocks();
+  });
+
+  it("keeps the modal open and offers an upgrade when the service limit is reached", async () => {
+    const user = userEvent.setup();
+    mockedCreateDatabaseService.mockRejectedValueOnce(
+      new ApiError("Your Free plan allows up to 1 service. Upgrade your plan to add another service.", 403, "SERVICE_LIMIT_REACHED"),
+    );
+    renderModal();
+
+    await user.click(screen.getByRole("button", { name: /database only/i }));
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+    await user.type(screen.getByPlaceholderText("e.g. shiply-db"), "main-db");
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+    await user.click(screen.getByRole("button", { name: /create service/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Service limit reached");
+    expect(screen.getByRole("button", { name: "Upgrade plan" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Add Service" })).toBeInTheDocument();
   });
 
   it("renders token-based repository selection state in dark mode and auto-populates the clone URL", async () => {

@@ -173,6 +173,7 @@ export default function ManageProject() {
           project={project}
           onClose={() => setShowAddService(false)}
           onCreated={fetchProject}
+          onUpgrade={() => navigate("/dashboard/billing?upgrade=1#current-subscription")}
         />
       ) : null}
 

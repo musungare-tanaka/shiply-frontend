@@ -75,26 +75,34 @@ describe("Billing layout and payment history loading", () => {
     await waitFor(() => expect(apiMocks.getPaymentHistory).toHaveBeenCalledWith({ page: 0, size: 3 }));
   });
 
-  it("shows plans and EcoCash immediately for an unsubscribed customer", async () => {
+  it("shows a Free summary and reveals higher tiers on demand", async () => {
+    const user = userEvent.setup();
     apiMocks.getBillingOverview.mockResolvedValue({ enabled: true, tiers: [
-      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2 },
-      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5 },
+      { tier: "FREE", usdPrice: 0, zwgPrice: 0, maxServices: 1, hierarchyOrder: 0 },
+      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2, hierarchyOrder: 1 },
+      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5, hierarchyOrder: 2 },
     ], serviceCount: 0, currentPlan: null });
     apiMocks.getPaymentHistory.mockResolvedValue({ ...history, content: [], totalElements: 0, totalPages: 0 });
 
     render(<Billing />);
 
-    expect(await screen.findByRole("button", { name: /Starter/ })).toBeInTheDocument();
+    const upgrade = await screen.findByRole("button", { name: "Upgrade plan" });
+    expect(screen.getByText("0 used / 1 allowed")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Starter/ })).not.toBeInTheDocument();
+    await user.click(upgrade);
+    expect(screen.getByRole("button", { name: /Starter/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pro/ })).toBeInTheDocument();
     expect(screen.getByLabelText("EcoCash number")).toBeInTheDocument();
-    expect(screen.getByText("No active plan")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Free/ })).not.toBeInTheDocument();
   });
 
   it("hides plan purchasing for a subscriber until Manage subscription is opened", async () => {
     const user = userEvent.setup();
     apiMocks.getBillingOverview.mockResolvedValue({ enabled: true, tiers: [
-      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2 },
-      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5 },
+      { tier: "FREE", usdPrice: 0, zwgPrice: 0, maxServices: 1, hierarchyOrder: 0 },
+      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2, hierarchyOrder: 1 },
+      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5, hierarchyOrder: 2 },
+      { tier: "BUSINESS", usdPrice: 25, zwgPrice: 650, maxServices: 12, hierarchyOrder: 3 },
     ], serviceCount: 2, activeTier: "PRO", currentPlan: {
       tier: "PRO", status: "SETTLED", amountPaid: 260, currency: "ZWG",
       purchasedAt: "2026-09-10T10:00:00Z", periodEnd: "2026-10-10T10:00:00Z", renewalMode: "MANUAL",
@@ -103,16 +111,17 @@ describe("Billing layout and payment history loading", () => {
 
     render(<Billing />);
 
-    const manage = await screen.findByRole("button", { name: "Manage subscription" });
+    const manage = await screen.findByRole("button", { name: "Upgrade plan" });
     expect(manage).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText("EcoCash number")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Starter/ })).not.toBeInTheDocument();
 
     await user.click(manage);
     expect(screen.getByLabelText("EcoCash number")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Starter/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Pro/ })).toHaveClass("ring-2");
-    expect(screen.getByRole("button", { name: "Hide plan options" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("button", { name: /Starter/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pro/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Business/ })).toHaveClass("ring-2");
+    expect(screen.getByRole("button", { name: "Hide upgrade options" })).toHaveAttribute("aria-expanded", "true");
   });
 });
 
@@ -163,10 +172,11 @@ describe("SubscriptionSummary", () => {
     const user = userEvent.setup();
     render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
       currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
-      renewalMode: "MANUAL" }} serviceCount={2} selectedTier="PRO" tierOption={{ zwgPrice: 275, maxServices: 5 }} />);
+      renewalMode: "MANUAL" }} effectiveTier="PRO" serviceCount={2} canUpgrade
+      tierOption={{ zwgPrice: 275, maxServices: 5 }} />);
     expect(screen.getByText("Pro")).toBeInTheDocument();
     expect(screen.getByText("ZWG 275.00 / month")).toBeInTheDocument();
-    expect(screen.getByText("Next billing / access date")).toBeInTheDocument();
+    expect(screen.getByText("Services")).toBeInTheDocument();
     expect(screen.queryByText(/you will not be charged automatically/i)).not.toBeInTheDocument();
 
     const details = screen.getByRole("button", { name: /View details/ });
@@ -178,8 +188,17 @@ describe("SubscriptionSummary", () => {
   });
 
   it("renders the free-tier state without an active plan", () => {
-    render(<SubscriptionSummary currentPlan={null} serviceCount={0} selectedTier="STARTER" />);
-    expect(screen.getByText("No active plan")).toBeInTheDocument();
-    expect(screen.getByText(/free tier/i)).toBeInTheDocument();
+    render(<SubscriptionSummary currentPlan={null} effectiveTier="FREE" serviceCount={0} canUpgrade
+      tierOption={{ zwgPrice: 0, maxServices: 1 }} />);
+    expect(screen.getByRole("heading", { name: "Free" })).toBeInTheDocument();
+    expect(screen.getByText("0 used / 1 allowed")).toBeInTheDocument();
+  });
+
+  it("hides the upgrade action for the highest configured tier", () => {
+    render(<SubscriptionSummary currentPlan={{ tier: "BUSINESS", status: "SETTLED", amountPaid: 650,
+      currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
+      renewalMode: "MANUAL" }} effectiveTier="BUSINESS" serviceCount={4} canUpgrade={false}
+      tierOption={{ zwgPrice: 650, maxServices: 12 }} />);
+    expect(screen.queryByRole("button", { name: "Upgrade plan" })).not.toBeInTheDocument();
   });
 });

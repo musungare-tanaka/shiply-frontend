@@ -4,7 +4,7 @@ export type ServiceStatus = "PENDING" | "PROVISIONING" | "RUNNING" | "FAILED";
 
 export type DatabaseType = "POSTGRESQL" | "MYSQL" | "REDIS" | "MONGODB";
 
-export type SubscriptionTier = "STARTER" | "PRO" | "BUSINESS";
+export type SubscriptionTier = "FREE" | "STARTER" | "PRO" | "BUSINESS";
 export type PaymentStatus =
   | "PENDING"
   | "PAID_AWAITING_DELIVERY"
@@ -21,6 +21,7 @@ export interface SubscriptionTierOption {
   usdPrice: number;
   zwgPrice: number;
   maxServices: number;
+  hierarchyOrder: number;
 }
 
 export interface BillingOverview {
