@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentStatus } from "../../../../lib/types";
 import Billing, { PaymentHistory, PaymentState, SubscriptionSummary } from "./Billing";
@@ -59,19 +60,59 @@ const history: PaymentHistoryPage = {
     completedAt: "2026-09-10T10:01:00",
   }],
   page: 0,
-  size: 5,
+  size: 3,
   totalElements: 21,
-  totalPages: 5,
+  totalPages: 7,
 };
 
-describe("Billing payment history loading", () => {
-  it("requests the first five transactions", async () => {
+describe("Billing layout and payment history loading", () => {
+  it("requests the latest three transactions", async () => {
     apiMocks.getBillingOverview.mockResolvedValue({ enabled: false, tiers: [], serviceCount: 0 });
     apiMocks.getPaymentHistory.mockResolvedValue(history);
 
     render(<Billing />);
 
-    await waitFor(() => expect(apiMocks.getPaymentHistory).toHaveBeenCalledWith({ page: 0, size: 5 }));
+    await waitFor(() => expect(apiMocks.getPaymentHistory).toHaveBeenCalledWith({ page: 0, size: 3 }));
+  });
+
+  it("shows plans and EcoCash immediately for an unsubscribed customer", async () => {
+    apiMocks.getBillingOverview.mockResolvedValue({ enabled: true, tiers: [
+      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2 },
+      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5 },
+    ], serviceCount: 0, currentPlan: null });
+    apiMocks.getPaymentHistory.mockResolvedValue({ ...history, content: [], totalElements: 0, totalPages: 0 });
+
+    render(<Billing />);
+
+    expect(await screen.findByRole("button", { name: /Starter/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pro/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("EcoCash number")).toBeInTheDocument();
+    expect(screen.getByText("No active plan")).toBeInTheDocument();
+  });
+
+  it("hides plan purchasing for a subscriber until Manage subscription is opened", async () => {
+    const user = userEvent.setup();
+    apiMocks.getBillingOverview.mockResolvedValue({ enabled: true, tiers: [
+      { tier: "STARTER", usdPrice: 5, zwgPrice: 130, maxServices: 2 },
+      { tier: "PRO", usdPrice: 10, zwgPrice: 260, maxServices: 5 },
+    ], serviceCount: 2, activeTier: "PRO", currentPlan: {
+      tier: "PRO", status: "SETTLED", amountPaid: 260, currency: "ZWG",
+      purchasedAt: "2026-09-10T10:00:00Z", periodEnd: "2026-10-10T10:00:00Z", renewalMode: "MANUAL",
+    } });
+    apiMocks.getPaymentHistory.mockResolvedValue({ ...history, content: [], totalElements: 0, totalPages: 0 });
+
+    render(<Billing />);
+
+    const manage = await screen.findByRole("button", { name: "Manage subscription" });
+    expect(manage).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("EcoCash number")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Starter/ })).not.toBeInTheDocument();
+
+    await user.click(manage);
+    expect(screen.getByLabelText("EcoCash number")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Starter/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pro/ })).toHaveClass("ring-2");
+    expect(screen.getByRole("button", { name: "Hide plan options" })).toHaveAttribute("aria-expanded", "true");
   });
 });
 
@@ -92,7 +133,7 @@ describe("PaymentHistory", () => {
     expect(screen.getAllByText("SHIPLY-HISTORY-1")).toHaveLength(2);
     expect(screen.getAllByText("Paid")).toHaveLength(2);
     expect(screen.getByText("21 transactions")).toBeInTheDocument();
-    expect(screen.getByText("Page 1 of 5")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 7")).toBeInTheDocument();
     expect(screen.queryByText(/pollUrl|paynowReference|ecocashNumber/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
     screen.getByRole("button", { name: "Next" }).click();
@@ -104,19 +145,35 @@ describe("PaymentHistory", () => {
   });
 
   it("disables next on the final page", () => {
-    render(<PaymentHistory history={{ ...history, page: 4 }} loading={false} error="" onRetry={vi.fn()} onPageChange={vi.fn()} />);
+    render(<PaymentHistory history={{ ...history, page: 6 }} loading={false} error="" onRetry={vi.fn()} onPageChange={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Previous" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("hides pagination when there are three or fewer transactions", () => {
+    render(<PaymentHistory history={{ ...history, totalElements: 3, totalPages: 1 }} loading={false} error="" onRetry={vi.fn()} onPageChange={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Previous" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Page 1 of/)).not.toBeInTheDocument();
   });
 });
 
 describe("SubscriptionSummary", () => {
-  it("renders current plan details and manual renewal messaging", () => {
+  it("renders an essential summary and reveals secondary plan details", async () => {
+    const user = userEvent.setup();
     render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
       currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
-      renewalMode: "MANUAL" }} serviceCount={2} selectedTier="PRO" />);
+      renewalMode: "MANUAL" }} serviceCount={2} selectedTier="PRO" tierOption={{ zwgPrice: 275, maxServices: 5 }} />);
     expect(screen.getByText("Pro")).toBeInTheDocument();
-    expect(screen.getByText("ZWG 260.00")).toBeInTheDocument();
+    expect(screen.getByText("ZWG 275.00 / month")).toBeInTheDocument();
+    expect(screen.getByText("Next billing / access date")).toBeInTheDocument();
+    expect(screen.queryByText(/you will not be charged automatically/i)).not.toBeInTheDocument();
+
+    const details = screen.getByRole("button", { name: /View details/ });
+    expect(details).toHaveAttribute("aria-expanded", "false");
+    await user.click(details);
+    expect(details).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Up to 5 services")).toBeInTheDocument();
     expect(screen.getByText(/you will not be charged automatically/i)).toBeInTheDocument();
   });
 

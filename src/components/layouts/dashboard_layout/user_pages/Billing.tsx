@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBillingOverview, getPaymentHistory, getPaymentStatus, initiatePayment } from "../../../../lib/api";
 import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, SubscriptionTier } from "../../../../lib/types";
@@ -6,7 +6,7 @@ import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPa
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
 const HISTORY_REFRESH_MS = 15000;
-export const PAYMENT_HISTORY_PAGE_SIZE = 5;
+export const PAYMENT_HISTORY_PAGE_SIZE = 3;
 const displayTier = (tier: string) => tier.charAt(0) + tier.slice(1).toLowerCase();
 const isEntitlementState = (status: PaymentResponse["status"]) =>
   status === "PAID_AWAITING_DELIVERY" || status === "DELIVERED_PENDING_SETTLEMENT" || status === "SETTLED";
@@ -17,6 +17,7 @@ const isHistoryRefreshState = (status: PaymentStatus) => isProgressingState(stat
 export default function Billing() {
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
+  const [plansExpanded, setPlansExpanded] = useState(false);
   const [mobileNumber, setMobileNumber] = useState("");
   const [saveNumber, setSaveNumber] = useState(true);
   const [payment, setPayment] = useState<PaymentResponse | null>(null);
@@ -35,6 +36,7 @@ export default function Billing() {
   const loadOverview = useCallback(async () => {
     const data = await getBillingOverview();
     setOverview(data);
+    setSelectedTier(data.currentPlan?.tier ?? data.activeTier ?? "STARTER");
     setMobileNumber((current) => current || data.ecocashNumber || "");
   }, []);
 
@@ -127,8 +129,11 @@ export default function Billing() {
   if (loading) return <div className="app-card app-muted">Loading billing…</div>;
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
+  const currentPlan = overview?.currentPlan ?? null;
+  const currentTier = currentPlan ? overview?.tiers.find((tier) => tier.tier === currentPlan.tier) : undefined;
+  const showPlanOptions = !currentPlan || plansExpanded;
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="app-page-title">Billing</h1>
         <p className="app-page-subtitle">Choose a monthly plan and pay securely with EcoCash through Paynow.</p>
@@ -139,31 +144,37 @@ export default function Billing() {
           <p className="mt-2 text-sm">Paynow has not been enabled for this environment. No payment can be submitted.</p>
         </div>
       ) : null}
-      <div className="grid gap-4 md:grid-cols-3">
-        {overview?.tiers.map((tier) => (
-          <button key={tier.tier} type="button" disabled={!overview.enabled || submitting}
-            onClick={() => setSelectedTier(tier.tier)}
-            className={`app-card text-left transition ${selectedTier === tier.tier ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
-            <p className="text-lg font-semibold">{displayTier(tier.tier)}</p>
-            <p className="mt-3 text-2xl font-bold">ZWG {tier.zwgPrice.toFixed(2)}<span className="app-muted text-sm font-normal"> / month</span></p>
-            <p className="app-muted mt-2 text-sm">Up to {tier.maxServices} deployable services · anchored at USD {tier.usdPrice}</p>
-          </button>
-        ))}
-      </div>
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="app-card">
+      {currentPlan ? (
+        <SubscriptionSummary currentPlan={currentPlan} serviceCount={overview?.serviceCount ?? 0}
+          selectedTier={selectedTier} tierOption={currentTier}
+          onManage={() => setPlansExpanded((expanded) => !expanded)} plansExpanded={plansExpanded} />
+      ) : null}
+      {showPlanOptions ? <section id="plan-options" className="space-y-4" aria-label="Available subscription plans">
+        <div className="grid gap-3 md:grid-cols-3">
+          {overview?.tiers.map((tier) => (
+            <button key={tier.tier} type="button" disabled={!overview.enabled || submitting}
+              onClick={() => setSelectedTier(tier.tier)}
+              className={`app-card p-4 text-left transition ${selectedTier === tier.tier ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
+              <p className="font-semibold">{displayTier(tier.tier)}</p>
+              <p className="mt-2 text-xl font-bold">ZWG {tier.zwgPrice.toFixed(2)}<span className="app-muted text-sm font-normal"> / month</span></p>
+              <p className="app-muted mt-1.5 text-xs">Up to {tier.maxServices} deployable services · USD {tier.usdPrice} anchor</p>
+            </button>
+          ))}
+        </div>
+        <div className={`grid gap-4 ${currentPlan ? "" : "xl:grid-cols-[minmax(0,0.85fr)_minmax(18rem,0.65fr)]"}`}>
+          <div className="app-card max-w-2xl p-4 sm:p-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-[var(--app-accent-soft)] p-3 text-[var(--app-accent)]"><Smartphone size={22} /></div>
-            <div><p className="text-lg font-semibold">Pay with EcoCash</p><p className="app-muted mt-1 text-sm">You will receive a PIN prompt on your phone.</p></div>
+            <div className="rounded-xl bg-[var(--app-accent-soft)] p-2 text-[var(--app-accent)]"><Smartphone size={19} /></div>
+            <div><p className="font-semibold">Pay with EcoCash</p><p className="app-muted mt-0.5 text-xs">You will receive a PIN prompt on your phone.</p></div>
           </div>
-          <form className="mt-6 space-y-4" onSubmit={submit}>
+          <form className="mt-4 space-y-3" onSubmit={submit}>
             <div>
               <label htmlFor="paynow-mobile" className="app-label">EcoCash number</label>
               <input id="paynow-mobile" className="app-input" value={mobileNumber}
                 onChange={(event) => setMobileNumber(event.target.value)} placeholder="077 123 4567"
                 autoComplete="tel" inputMode="tel" disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} required />
             </div>
-            <label className="flex items-center gap-3 text-sm">
+            <label className="flex items-center gap-2.5 text-sm">
               <input type="checkbox" checked={saveNumber} onChange={(event) => setSaveNumber(event.target.checked)}
                 disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} />
               Save this number after a successful payment
@@ -175,13 +186,11 @@ export default function Billing() {
               {submitting ? "Starting payment…" : `Pay ZWG ${selected?.zwgPrice.toFixed(2) ?? "—"}`}
             </button>
           </form>
+          </div>
+          {!currentPlan ? <SubscriptionSummary currentPlan={null} serviceCount={overview?.serviceCount ?? 0}
+            selectedTier={selectedTier} tierOption={selected} /> : null}
         </div>
-        <div className="app-card">
-          <p className="text-lg font-semibold">Subscription summary</p>
-          <SubscriptionSummary currentPlan={overview?.currentPlan ?? null} serviceCount={overview?.serviceCount ?? 0}
-            selectedTier={selectedTier} />
-        </div>
-      </div>
+      </section> : null}
       <PaymentHistory
         history={history}
         loading={historyLoading}
@@ -200,25 +209,42 @@ const currentPlanStatus = (status: PaymentStatus) => {
   return status.replaceAll("_", " ").toLowerCase();
 };
 
-export function SubscriptionSummary({ currentPlan, serviceCount, selectedTier }: {
+export function SubscriptionSummary({ currentPlan, serviceCount, selectedTier, tierOption, onManage, plansExpanded = false }: {
   currentPlan: CurrentPlan | null;
   serviceCount: number;
   selectedTier: SubscriptionTier;
+  tierOption?: { zwgPrice: number; maxServices: number };
+  onManage?: () => void;
+  plansExpanded?: boolean;
 }) {
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   if (!currentPlan) {
-    return <div className="mt-4 text-sm"><p className="font-medium">No active plan</p>
+    return <div className="app-card text-sm"><p className="font-medium">No active plan</p>
       <p className="app-muted mt-2">You are currently on the free tier. Choose a plan to activate paid access.</p>
       <dl className="mt-4 space-y-3"><div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
         <div className="flex justify-between gap-4"><dt className="app-muted">Selected plan</dt><dd className="font-medium">{displayTier(selectedTier)}</dd></div></dl></div>;
   }
-  return <div className="mt-4 text-sm"><dl className="space-y-3">
-    <div className="flex justify-between gap-4"><dt className="app-muted">Current plan</dt><dd className="font-medium">{displayTier(currentPlan.tier)}</dd></div>
-    <div className="flex justify-between gap-4"><dt className="app-muted">Status</dt><dd className="font-medium text-right">{currentPlanStatus(currentPlan.status)}</dd></div>
-    <div className="flex justify-between gap-4"><dt className="app-muted">Amount paid</dt><dd className="font-medium">{currentPlan.currency} {currentPlan.amountPaid.toFixed(2)}</dd></div>
-    <div className="flex justify-between gap-4"><dt className="app-muted">Purchased</dt><dd className="font-medium text-right">{formatDate(currentPlan.purchasedAt)}</dd></div>
-    <div className="flex justify-between gap-4"><dt className="app-muted">Access through</dt><dd className="font-medium text-right">{formatDate(currentPlan.periodEnd)}</dd></div>
-    <div className="flex justify-between gap-4"><dt className="app-muted">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
-  </dl><p className="app-muted mt-4">Manual renewal — you will not be charged automatically.</p></div>;
+  return <section id="current-subscription" className="app-card scroll-mt-4 p-4 sm:p-4" aria-labelledby="current-subscription-title">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div><p className="app-muted text-xs font-medium uppercase tracking-wide">Current subscription</p>
+        <h2 id="current-subscription-title" className="mt-1 text-lg font-semibold">{displayTier(currentPlan.tier)}</h2></div>
+      {onManage ? <button type="button" className="app-button-secondary" onClick={onManage}
+        aria-expanded={plansExpanded} aria-controls="plan-options">{plansExpanded ? "Hide plan options" : "Manage subscription"}</button> : null}
+    </div>
+    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+      <div><dt className="app-muted text-xs">Status</dt><dd className="mt-0.5 font-medium">{currentPlanStatus(currentPlan.status)}</dd></div>
+      <div><dt className="app-muted text-xs">Price</dt><dd className="mt-0.5 font-medium">{currentPlan.currency} {(tierOption?.zwgPrice ?? currentPlan.amountPaid).toFixed(2)} / month</dd></div>
+      <div><dt className="app-muted text-xs">Next billing / access date</dt><dd className="mt-0.5 font-medium">{formatDate(currentPlan.periodEnd)}</dd></div>
+    </dl>
+    <button type="button" className="app-link mt-3 inline-flex items-center gap-1" onClick={() => setDetailsExpanded((expanded) => !expanded)}
+      aria-expanded={detailsExpanded} aria-controls="subscription-details">View details <ChevronDown size={15} className={detailsExpanded ? "rotate-180" : ""} /></button>
+    {detailsExpanded ? <div id="subscription-details" className="app-surface-soft mt-3 rounded-xl border border-[var(--app-border)] p-3 text-sm">
+      <dl className="grid gap-2 sm:grid-cols-3"><div><dt className="app-muted text-xs">Purchased</dt><dd className="font-medium">{formatDate(currentPlan.purchasedAt)}</dd></div>
+        <div><dt className="app-muted text-xs">Services in use</dt><dd className="font-medium">{serviceCount}</dd></div>
+        <div><dt className="app-muted text-xs">Plan allowance</dt><dd className="font-medium">{tierOption ? `Up to ${tierOption.maxServices} services` : "—"}</dd></div></dl>
+      <p className="app-muted mt-2 text-xs">Manual renewal — you will not be charged automatically.</p>
+    </div> : null}
+  </section>;
 }
 
 export function PaymentState({ payment, timedOut, onRefresh }: { payment: PaymentResponse; timedOut: boolean; onRefresh: () => void }) {
@@ -228,7 +254,7 @@ export function PaymentState({ payment, timedOut, onRefresh }: { payment: Paymen
   const refunded = payment.status === "REFUNDED";
   const Icon = paid ? CheckCircle2 : review ? AlertTriangle : pending ? Clock3 : refunded ? RotateCcw : XCircle;
   return (
-    <div className={`rounded-2xl border p-4 text-sm ${paid ? "bg-[var(--app-success-soft)] text-[var(--app-success-text)]" : "bg-[var(--app-surface-soft)]"}`}>
+    <div className={`rounded-xl border p-3 text-sm ${paid ? "bg-[var(--app-success-soft)] text-[var(--app-success-text)]" : "bg-[var(--app-surface-soft)]"}`}>
       <div className="flex items-start gap-3"><Icon size={19} className="mt-0.5 shrink-0" /><div><p className="font-semibold">{payment.message}</p>
         <p className="app-muted mt-1 text-xs">Reference: {payment.merchantReference}</p></div></div>
       {pending && timedOut ? <button type="button" className="app-button-secondary mt-3" onClick={onRefresh}>Refresh payment status</button> : null}
@@ -260,7 +286,7 @@ export function PaymentHistory({ history, loading, error, onRetry, onPageChange 
   onPageChange: (page: number) => void;
 }) {
   return (
-    <section className="app-card overflow-hidden" aria-labelledby="payment-history-title" aria-busy={loading}>
+    <section id="payment-history" className="app-card scroll-mt-4 overflow-hidden" aria-labelledby="payment-history-title" aria-busy={loading}>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h2 id="payment-history-title" className="text-lg font-semibold">Payment history</h2>
@@ -285,13 +311,13 @@ export function PaymentHistory({ history, loading, error, onRetry, onPageChange 
             </table>
           </div>
           <div className="mt-4 space-y-2.5 md:hidden">{history.content.map((item) => <article key={item.merchantReference} className="app-surface-soft rounded-xl border border-[var(--app-border)] p-3"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="font-semibold">{item.currency} {item.amount.toFixed(2)}</p><p className="app-muted mt-0.5 truncate font-mono text-xs" title={item.merchantReference}>{item.merchantReference}</p></div><div className="shrink-0"><HistoryStatus item={item} /></div></div><dl className="mt-3 space-y-1.5 text-xs"><div className="flex justify-between gap-3"><dt className="app-muted">Plan and method</dt><dd className="text-right font-medium">{displayTier(item.subscriptionTier)} · {formatMethod(item.paymentChannel)}</dd></div><div className="flex justify-between gap-3"><dt className="app-muted shrink-0">Created</dt><dd className="text-right">{formatDate(item.createdAt)}</dd></div>{item.completedAt ? <div className="flex justify-between gap-3"><dt className="app-muted shrink-0">Completed</dt><dd className="text-right">{formatDate(item.completedAt)}</dd></div> : null}</dl><p className="app-muted mt-2 border-t border-[var(--app-border)] pt-2 text-xs leading-4">{item.message}</p></article>)}</div>
-          <div className="mt-5 flex flex-col gap-3 border-t border-[var(--app-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+          {history.totalElements > PAYMENT_HISTORY_PAGE_SIZE ? <div className="mt-5 flex flex-col gap-3 border-t border-[var(--app-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="app-muted text-center text-sm sm:text-left" aria-live="polite">Page {history.page + 1} of {Math.max(history.totalPages, 1)}</p>
             <div className="flex w-full gap-2 sm:w-auto">
               <button type="button" className="app-button-secondary min-w-0 flex-1 sm:flex-none" disabled={loading || history.page <= 0} onClick={() => onPageChange(history.page - 1)}>Previous</button>
               <button type="button" className="app-button-secondary min-w-0 flex-1 sm:flex-none" disabled={loading || history.page >= history.totalPages - 1} onClick={() => onPageChange(history.page + 1)}>Next</button>
             </div>
-          </div>
+          </div> : null}
         </div>
       ) : null}
     </section>

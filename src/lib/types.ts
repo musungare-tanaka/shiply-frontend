@@ -31,6 +31,18 @@ export interface BillingOverview {
   currentPeriodEnd?: string | null;
   serviceCount: number;
   currentPlan?: CurrentPlan | null;
+  paidBills: PaidBillsSummary;
+}
+
+export interface PaidBillsSummary {
+  count: number;
+  totals: CurrencyTotal[];
+  latestPayment?: PaymentHistoryItem | null;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  amount: number;
 }
 
 export interface CurrentPlan {
