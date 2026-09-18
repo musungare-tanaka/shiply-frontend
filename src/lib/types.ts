@@ -5,6 +5,29 @@ export type ServiceStatus = "PENDING" | "PROVISIONING" | "RUNNING" | "FAILED";
 export type DatabaseType = "POSTGRESQL" | "MYSQL" | "REDIS" | "MONGODB";
 
 export type SubscriptionTier = "FREE" | "STARTER" | "PRO" | "BUSINESS";
+export type PaymentCurrency = "USD" | "ZWG";
+
+export interface PricingCurrency {
+  code: PaymentCurrency;
+  displayLabel: string;
+  estimated: boolean;
+  checkoutAvailable: boolean;
+}
+
+export interface PublicPlan {
+  tier: SubscriptionTier;
+  displayName: string;
+  billingPeriod: "MONTHLY";
+  maxServices: number;
+  hierarchyOrder: number;
+  prices: Record<PaymentCurrency, number>;
+}
+
+export interface PricingCatalog {
+  defaultCurrency: PaymentCurrency;
+  currencies: PricingCurrency[];
+  plans: PublicPlan[];
+}
 export type PaymentStatus =
   | "PENDING"
   | "PAID_AWAITING_DELIVERY"

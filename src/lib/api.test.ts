@@ -41,13 +41,13 @@ describe("deployment API calls", () => {
     fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => payment });
 
     await expect(getBillingOverview()).resolves.toEqual(overview);
-    await expect(initiatePayment("STARTER", "0771234567", true)).resolves.toEqual(payment);
+    await expect(initiatePayment("STARTER", "ZWG", "0771234567", true)).resolves.toEqual(payment);
     await expect(getPaymentStatus("SHIPLY-1")).resolves.toEqual(payment);
 
     expect(fetchMock).toHaveBeenNthCalledWith(2, "http://localhost:9091/api/payments",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ tier: "STARTER", ecocashNumber: "0771234567", saveNumber: true }),
+        body: JSON.stringify({ tier: "STARTER", currency: "ZWG", ecocashNumber: "0771234567", saveNumber: true }),
       }));
     expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:9091/api/payments/SHIPLY-1");
   });

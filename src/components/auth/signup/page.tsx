@@ -5,9 +5,17 @@ import { isGoogleIdentityEnabled, renderGoogleButton } from "../../../util/googl
 import { setAuthSession } from "../../../util/auth";
 import AuthShell from "../AuthShell";
 import PasswordField from "../PasswordField";
+import { saveCurrency, validCurrency } from "../../../lib/pricing";
+import type { SubscriptionTier } from "../../../lib/types";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const params = new URLSearchParams(window.location.search);
+  const requestedPlan = params.get("plan") as SubscriptionTier | null;
+  const requestedCurrency = params.get("currency");
+  const paidPlans: SubscriptionTier[] = ["STARTER", "PRO", "BUSINESS"];
+  const billingTarget = paidPlans.includes(requestedPlan as SubscriptionTier) && validCurrency(requestedCurrency)
+    ? `/dashboard/billing?upgrade=1&plan=${requestedPlan}&currency=${requestedCurrency}` : "/dashboard";
 
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -48,7 +56,8 @@ const Signup = () => {
         const data = await res.json();
 
         setAuthSession(data);
-        navigate("/dashboard");
+        if (validCurrency(requestedCurrency)) saveCurrency(requestedCurrency);
+        navigate(billingTarget);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Signup failed");
       } finally {
@@ -58,7 +67,7 @@ const Signup = () => {
       googleBtnRendered.current = false;
       setError(err.message);
     });
-  }, [navigate]);
+  }, [navigate, billingTarget, requestedCurrency]);
 
 
 
@@ -89,7 +98,8 @@ const Signup = () => {
       const data = await res.json();
 
       setAuthSession(data);
-      navigate("/dashboard");
+      if (validCurrency(requestedCurrency)) saveCurrency(requestedCurrency);
+      navigate(billingTarget);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {

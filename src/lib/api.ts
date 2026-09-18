@@ -20,6 +20,8 @@ import type {
   PaymentHistoryPage,
   PaymentStatus,
   SubscriptionTier,
+  PaymentCurrency,
+  PricingCatalog,
 } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:9091").replace(/\/$/, "");
@@ -126,17 +128,19 @@ export const createApplicationService = (projectId: string, input: CreateApplica
 export const getBillingOverview = () =>
   request<BillingOverview>("/api/payments/overview", { headers: buildHeaders() });
 
+export const getPricingCatalog = () => request<PricingCatalog>("/api/payments/plans");
+
 export const cancelSubscription = () =>
   request<BillingOverview>("/api/payments/subscription/cancel", {
     method: "POST",
     headers: buildHeaders(),
   });
 
-export const initiatePayment = (tier: SubscriptionTier, ecocashNumber: string, saveNumber: boolean) =>
+export const initiatePayment = (tier: SubscriptionTier, currency: PaymentCurrency, ecocashNumber: string, saveNumber: boolean) =>
   request<PaymentResponse>("/api/payments", {
     method: "POST",
     headers: buildHeaders(),
-    body: JSON.stringify({ tier, ecocashNumber, saveNumber }),
+    body: JSON.stringify({ tier, currency, ecocashNumber, saveNumber }),
   });
 
 export const getPaymentStatus = (merchantReference: string) =>

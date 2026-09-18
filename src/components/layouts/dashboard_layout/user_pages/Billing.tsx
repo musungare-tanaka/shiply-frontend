@@ -1,7 +1,8 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, RotateCcw, Smartphone, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cancelSubscription, getBillingOverview, getPaymentHistory, getPaymentStatus, initiatePayment } from "../../../../lib/api";
-import type { BillingOverview, CurrentPlan, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, SubscriptionTier } from "../../../../lib/types";
+import { cancelSubscription, getBillingOverview, getPaymentHistory, getPaymentStatus, getPricingCatalog, initiatePayment } from "../../../../lib/api";
+import { currencyLabel, formatPrice, saveCurrency, storedCurrency, validCurrency } from "../../../../lib/pricing";
+import type { BillingOverview, CurrentPlan, PaymentCurrency, PaymentHistoryItem, PaymentHistoryPage, PaymentResponse, PaymentStatus, PricingCatalog, SubscriptionTier } from "../../../../lib/types";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
@@ -15,8 +16,13 @@ const isProgressingState = (status: PaymentResponse["status"]) =>
 const isHistoryRefreshState = (status: PaymentStatus) => isProgressingState(status) || status === "DISPUTED";
 
 export default function Billing() {
+  const query = new URLSearchParams(window.location.search);
+  const queryPlan = query.get("plan") as SubscriptionTier | null;
+  const queryCurrency = query.get("currency");
   const [overview, setOverview] = useState<BillingOverview | null>(null);
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
+  const [catalog, setCatalog] = useState<PricingCatalog | null>(null);
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(() => ["STARTER", "PRO", "BUSINESS"].includes(queryPlan ?? "") ? queryPlan! : "STARTER");
+  const [currency, setCurrency] = useState<PaymentCurrency>(() => validCurrency(queryCurrency) ? queryCurrency : storedCurrency());
   const [plansExpanded, setPlansExpanded] = useState(() => new URLSearchParams(window.location.search).get("upgrade") === "1");
   const [mobileNumber, setMobileNumber] = useState("");
   const [saveNumber, setSaveNumber] = useState(true);
@@ -35,16 +41,21 @@ export default function Billing() {
   const historyRefreshQueued = useRef(false);
 
   const loadOverview = useCallback(async () => {
-    const data = await getBillingOverview();
+    const [data, pricing] = await Promise.all([getBillingOverview(), getPricingCatalog()]);
     setOverview(data);
+    setCatalog(pricing);
     const activeOrder = data.tiers.find((tier) => tier.tier === (data.activeTier ?? "FREE"))?.hierarchyOrder ?? 0;
     const nextTier = [...data.tiers]
       .sort((left, right) => left.hierarchyOrder - right.hierarchyOrder)
       .find((tier) => tier.hierarchyOrder > activeOrder);
-    if (nextTier) setSelectedTier(nextTier.tier);
-    else setPlansExpanded(false);
+    const requestedIsEligible = data.tiers.some((tier) => tier.tier === queryPlan && tier.hierarchyOrder > activeOrder);
+    if (!requestedIsEligible && nextTier) setSelectedTier(nextTier.tier);
+    if (!requestedIsEligible && !nextTier) setPlansExpanded(false);
+    const requestedCurrency = validCurrency(queryCurrency) ? queryCurrency : storedCurrency(pricing.defaultCurrency);
+    setCurrency(requestedCurrency);
+    saveCurrency(requestedCurrency);
     setMobileNumber((current) => current || data.ecocashNumber || "");
-  }, []);
+  }, [queryCurrency, queryPlan]);
 
   const loadHistory = useCallback(async (page = historyPage) => {
     if (historyRequestActive.current) {
@@ -116,7 +127,7 @@ export default function Billing() {
     setTimedOut(false);
     pollAttempts.current = 0;
     try {
-      setPayment(await initiatePayment(selectedTier, mobileNumber, saveNumber));
+      setPayment(await initiatePayment(selectedTier, currency, mobileNumber, saveNumber));
       setHistoryPage(0);
       await loadHistory(0);
     } catch (reason) {
@@ -149,6 +160,8 @@ export default function Billing() {
   if (loading) return <div className="app-card app-muted">Loading billing…</div>;
 
   const selected = overview?.tiers.find((tier) => tier.tier === selectedTier);
+  const selectedAmount = selected ? (currency === "USD" ? selected.usdPrice : selected.zwgPrice) : null;
+  const selectedCurrencyOption = catalog?.currencies.find((option) => option.code === currency);
   const currentPlan = overview?.currentPlan ?? null;
   const effectiveTierName = overview?.activeTier ?? "FREE";
   const currentTier = overview?.tiers.find((tier) => tier.tier === effectiveTierName);
@@ -176,14 +189,22 @@ export default function Billing() {
         cancelling={cancelling} />
       {error && !showPlanOptions ? <div className="app-warning-panel" role="alert">{error}</div> : null}
       {showPlanOptions ? <section id="plan-options" className="space-y-4" aria-label="Available subscription plans">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="app-muted text-sm">Select the currency for your EcoCash payment.</p>
+          <button type="button" onClick={() => { const next = currency === "USD" ? "ZWG" : "USD"; setCurrency(next); saveCurrency(next); }}
+            className="app-button-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
+            aria-label={`Switch payment currency to ${currency === "USD" ? "ZiG" : "USD"}`}>⇄ {currencyLabel(currency)}</button>
+        </div>
+        {currency === "ZWG" ? <p className="app-muted text-xs">ZiG prices are estimated using the current configured rate. The server validates the final amount.</p> : null}
+        {!selectedCurrencyOption?.checkoutAvailable ? <div className="app-warning-panel" role="alert">{currencyLabel(currency)} checkout is not configured for this environment.</div> : null}
         <div className="grid gap-3 md:grid-cols-3">
           {eligibleTiers.map((tier) => (
-            <button key={tier.tier} type="button" disabled={!overview?.enabled || submitting}
+            <button key={tier.tier} type="button" disabled={!selectedCurrencyOption?.checkoutAvailable || submitting}
               onClick={() => setSelectedTier(tier.tier)}
               className={`app-card p-4 text-left transition ${selectedTier === tier.tier ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
               <p className="font-semibold">{displayTier(tier.tier)}</p>
-              <p className="mt-2 text-xl font-bold">ZWG {tier.zwgPrice.toFixed(2)}<span className="app-muted text-sm font-normal"> / month</span></p>
-              <p className="app-muted mt-1.5 text-xs">Up to {tier.maxServices} deployable services · USD {tier.usdPrice} anchor</p>
+              <p className="mt-2 text-xl font-bold">{formatPrice(currency, currency === "USD" ? tier.usdPrice : tier.zwgPrice)}<span className="app-muted text-sm font-normal"> / month</span></p>
+              <p className="app-muted mt-1.5 text-xs">Up to {tier.maxServices} deployable services</p>
             </button>
           ))}
         </div>
@@ -198,18 +219,18 @@ export default function Billing() {
               <label htmlFor="paynow-mobile" className="app-label">EcoCash number</label>
               <input id="paynow-mobile" className="app-input" value={mobileNumber}
                 onChange={(event) => setMobileNumber(event.target.value)} placeholder="077 123 4567"
-                autoComplete="tel" inputMode="tel" disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} required />
+                autoComplete="tel" inputMode="tel" disabled={!selectedCurrencyOption?.checkoutAvailable || submitting || Boolean(payment && isProgressingState(payment.status))} required />
             </div>
             <label className="flex items-center gap-2.5 text-sm">
               <input type="checkbox" checked={saveNumber} onChange={(event) => setSaveNumber(event.target.checked)}
-                disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))} />
+                disabled={!selectedCurrencyOption?.checkoutAvailable || submitting || Boolean(payment && isProgressingState(payment.status))} />
               Save this number after a successful payment
             </label>
             {error ? <div className="rounded-xl border p-3 text-sm text-red-700">{error}</div> : null}
             {payment ? <PaymentState payment={payment} timedOut={timedOut} onRefresh={() => void refreshPayment()} /> : null}
             <button type="submit" className="app-button-primary"
-              disabled={!overview?.enabled || submitting || Boolean(payment && isProgressingState(payment.status))}>
-              {submitting ? "Starting payment…" : `Pay ZWG ${selected?.zwgPrice.toFixed(2) ?? "—"}`}
+              disabled={!selectedCurrencyOption?.checkoutAvailable || submitting || Boolean(payment && isProgressingState(payment.status))}>
+              {submitting ? "Starting payment…" : selectedAmount == null ? "Price unavailable" : `Pay ${formatPrice(currency, selectedAmount)}`}
             </button>
           </form>
           </div>
@@ -237,7 +258,7 @@ export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, 
   currentPlan: CurrentPlan | null;
   effectiveTier: SubscriptionTier;
   serviceCount: number;
-  tierOption?: { zwgPrice: number; maxServices: number };
+  tierOption?: { usdPrice: number; zwgPrice: number; maxServices: number };
   canUpgrade: boolean;
   onUpgrade?: () => void;
   plansExpanded?: boolean;
@@ -254,7 +275,7 @@ export function SubscriptionSummary({ currentPlan, effectiveTier, serviceCount, 
     </div>
     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
       <div><dt className="app-muted text-xs">Status</dt><dd className="mt-0.5 font-medium">{currentPlan ? currentPlanStatus(currentPlan.status) : "Active"}</dd></div>
-      <div><dt className="app-muted text-xs">Price</dt><dd className="mt-0.5 font-medium">{currentPlan ? `${currentPlan.currency} ${(tierOption?.zwgPrice ?? currentPlan.amountPaid).toFixed(2)} / month` : "Free"}</dd></div>
+      <div><dt className="app-muted text-xs">Price</dt><dd className="mt-0.5 font-medium">{currentPlan ? `${currentPlan.currency === "ZWG" ? "ZiG" : currentPlan.currency} ${(tierOption ? (currentPlan.currency === "USD" ? tierOption.usdPrice : tierOption.zwgPrice) : currentPlan.amountPaid).toFixed(2)} / month` : "Free"}</dd></div>
       <div><dt className="app-muted text-xs">Services</dt><dd className="mt-0.5 font-medium">{serviceCount} used / {tierOption?.maxServices ?? 1} allowed</dd></div>
     </dl>
     <button type="button" className="app-link mt-3 inline-flex items-center gap-1" onClick={() => setDetailsExpanded((expanded) => !expanded)}

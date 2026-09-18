@@ -7,6 +7,7 @@ import type { PaymentHistoryPage } from "../../../../lib/types";
 
 const apiMocks = vi.hoisted(() => ({
   getBillingOverview: vi.fn(),
+  getPricingCatalog: vi.fn(),
   getPaymentHistory: vi.fn(),
   getPaymentStatus: vi.fn(),
   initiatePayment: vi.fn(),
@@ -17,6 +18,14 @@ vi.mock("../../../../lib/api", () => apiMocks);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  apiMocks.getPricingCatalog.mockResolvedValue({
+    defaultCurrency: "USD",
+    currencies: [
+      { code: "USD", displayLabel: "USD", estimated: false, checkoutAvailable: true },
+      { code: "ZWG", displayLabel: "ZiG", estimated: true, checkoutAvailable: true },
+    ],
+    plans: [],
+  });
 });
 
 const messages: Record<PaymentStatus, string> = {
@@ -174,9 +183,9 @@ describe("SubscriptionSummary", () => {
     render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
       currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
       renewalMode: "MANUAL" }} effectiveTier="PRO" serviceCount={2} canUpgrade
-      tierOption={{ zwgPrice: 275, maxServices: 5 }} />);
+      tierOption={{ usdPrice: 10, zwgPrice: 275, maxServices: 5 }} />);
     expect(screen.getByText("Pro")).toBeInTheDocument();
-    expect(screen.getByText("ZWG 275.00 / month")).toBeInTheDocument();
+    expect(screen.getByText("ZiG 275.00 / month")).toBeInTheDocument();
     expect(screen.getByText("Services")).toBeInTheDocument();
     expect(screen.queryByText(/you will not be charged automatically/i)).not.toBeInTheDocument();
 
@@ -190,7 +199,7 @@ describe("SubscriptionSummary", () => {
 
   it("renders the free-tier state without an active plan", () => {
     render(<SubscriptionSummary currentPlan={null} effectiveTier="FREE" serviceCount={0} canUpgrade
-      tierOption={{ zwgPrice: 0, maxServices: 1 }} />);
+      tierOption={{ usdPrice: 0, zwgPrice: 0, maxServices: 1 }} />);
     expect(screen.getByRole("heading", { name: "Free" })).toBeInTheDocument();
     expect(screen.getByText("0 used / 1 allowed")).toBeInTheDocument();
   });
@@ -199,7 +208,7 @@ describe("SubscriptionSummary", () => {
     render(<SubscriptionSummary currentPlan={{ tier: "BUSINESS", status: "SETTLED", amountPaid: 650,
       currency: "ZWG", purchasedAt: "2026-09-10T10:00:00", periodEnd: "2026-10-10T10:00:00",
       renewalMode: "MANUAL" }} effectiveTier="BUSINESS" serviceCount={4} canUpgrade={false}
-      tierOption={{ zwgPrice: 650, maxServices: 12 }} />);
+      tierOption={{ usdPrice: 25, zwgPrice: 650, maxServices: 12 }} />);
     expect(screen.queryByRole("button", { name: "Upgrade plan" })).not.toBeInTheDocument();
   });
 
@@ -209,7 +218,7 @@ describe("SubscriptionSummary", () => {
     render(<SubscriptionSummary currentPlan={{ tier: "PRO", status: "SETTLED", amountPaid: 260,
       currency: "ZWG", purchasedAt: "2026-09-10T10:00:00Z", periodEnd: "2027-09-10T10:00:00Z",
       renewalMode: "MANUAL" }} effectiveTier="PRO" serviceCount={2} canUpgrade onCancel={onCancel}
-      tierOption={{ zwgPrice: 260, maxServices: 5 }} />);
+      tierOption={{ usdPrice: 10, zwgPrice: 260, maxServices: 5 }} />);
 
     await user.click(screen.getByRole("button", { name: /View details/ }));
     await user.click(screen.getByRole("button", { name: "Cancel subscription" }));
