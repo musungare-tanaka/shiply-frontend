@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getPricingCatalog, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -89,6 +89,21 @@ describe("deployment API calls", () => {
     if (!(error instanceof ApiError)) throw new Error("Expected ApiError");
     expect(error.code).toBe("SERVICE_LIMIT_REACHED");
     expect(error.details).toEqual({ tier: "FREE", serviceCount: 1, maxServices: 1 });
+    expect(localStorage.getItem("token")).toBe("test-token");
+  });
+
+  it("does not clear the session or redirect when the public pricing request is unauthorized", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: "Unauthorized" }),
+    });
+
+    await expect(getPricingCatalog()).rejects.toMatchObject({
+      status: 401,
+      message: "Unauthorized",
+    });
+
     expect(localStorage.getItem("token")).toBe("test-token");
   });
 });

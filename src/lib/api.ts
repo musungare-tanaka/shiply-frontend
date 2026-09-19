@@ -72,11 +72,13 @@ const readError = async (response: Response, fallback: string) => {
   }
 };
 
-const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+const request = async <T>(path: string, init?: RequestInit, redirectOnUnauthorized = true): Promise<T> => {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
 
   if (!response.ok) {
-    handleUnauthorized(response.status);
+    if (redirectOnUnauthorized) {
+      handleUnauthorized(response.status);
+    }
     const error = await readError(response, "Request failed");
     throw new ApiError(error.message, response.status, error.code, error.details);
   }
@@ -128,7 +130,7 @@ export const createApplicationService = (projectId: string, input: CreateApplica
 export const getBillingOverview = () =>
   request<BillingOverview>("/api/payments/overview", { headers: buildHeaders() });
 
-export const getPricingCatalog = () => request<PricingCatalog>("/api/payments/plans");
+export const getPricingCatalog = () => request<PricingCatalog>("/api/payments/plans", undefined, false);
 
 export const cancelSubscription = () =>
   request<BillingOverview>("/api/payments/subscription/cancel", {

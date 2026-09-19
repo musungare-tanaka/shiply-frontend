@@ -7,7 +7,7 @@ vi.mock("./components/layouts/dashboard_layout/page", async () => {
   const { useLocation } = await import("react-router-dom");
 
   return {
-    default: () => {
+    default: function MockDashboardLayout() {
       const location = useLocation();
 
       return (
@@ -144,5 +144,22 @@ describe("App auth access", () => {
     expect(signupLinks.length).toBeGreaterThan(0);
     expect(loginLinks[0]).toHaveAttribute("href", "/login");
     expect(signupLinks[0]).toHaveAttribute("href", "/signup");
+  });
+
+  it("keeps the landing page public for authenticated users", () => {
+    localStorage.setItem("token", "existing-session");
+
+    renderAtRoute("/");
+
+    expect(screen.getAllByRole("link", { name: /log in/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /sign up/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Dashboard route:/i)).not.toBeInTheDocument();
+  });
+
+  it("protects the GitHub import route", () => {
+    renderAtRoute("/projects/import/github");
+
+    expect(screen.getByRole("heading", { name: /login to your shiply account/i })).toBeInTheDocument();
+    expect(screen.queryByText("GitHub import page")).not.toBeInTheDocument();
   });
 });
