@@ -278,6 +278,8 @@ export interface DeploymentStreamEvent {
   id: string;
   deploymentId: string;
   projectId?: string | null;
+  serviceId?: string | null;
+  serviceName?: string | null;
   status: string;
   stage: string;
   message: string;

@@ -277,8 +277,8 @@ export const getProjectDeploymentStreamToken = (projectId: string) =>
 export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous?: DeploymentStatusResponse | null): DeploymentStatusResponse => ({
   deploymentId: event.deploymentId,
   projectId: event.projectId || previous?.projectId || "",
-  serviceId: previous?.serviceId || "",
-  serviceName: previous?.serviceName || "",
+  serviceId: event.serviceId || previous?.serviceId || "",
+  serviceName: event.serviceName || previous?.serviceName || "",
   status: event.status,
   eventType: event.stage,
   timestamp: event.timestamp,
