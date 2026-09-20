@@ -273,3 +273,15 @@ export interface DeploymentStatusResponse {
   timestamp: string | null;
   metadata: Record<string, unknown>;
 }
+
+export interface DeploymentStreamEvent {
+  id: string;
+  deploymentId: string;
+  projectId?: string | null;
+  status: string;
+  stage: string;
+  message: string;
+  timestamp: string;
+  ingressHost?: string | null;
+  tlsEnabled?: boolean | null;
+}

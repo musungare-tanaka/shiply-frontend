@@ -1,145 +1,40 @@
-import { AlertCircle, ExternalLink, History, Rocket } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Circle, ExternalLink, History, Rocket } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getProject, getProjectDeployments } from "../../../../lib/api";
-import { isDeploymentActive, useDeploymentStatus } from "../../../../hooks/useDeploymentStatus";
-import type { DeploymentStatusResponse, Project } from "../../../../lib/types";
+import { getProject } from "../../../../lib/api";
+import { useProjectDeployments } from "../../../../hooks/useProjectDeployments";
+import type { DeploymentStatusResponse, DeploymentStreamEvent, Project } from "../../../../lib/types";
 import DeploymentStatusBadge from "./DeploymentStatusBadge";
 
-const formatTimestamp = (timestamp?: string | null) => {
-  if (!timestamp) return "Waiting for first status event";
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? timestamp : date.toLocaleString(undefined, { timeZone: "Africa/Harare" });
-};
+const steps = [["QUEUED","Queued"],["BUILDING","Building"],["BUILD_SUCCEEDED","Build succeeded"],["ORCHESTRATING","Deploying"],["DEPLOYED","Deployed"],["RUNNING","Running"]] as const;
+const rank = (status?: string | null) => steps.findIndex(([value]) => value === status);
+const formatTimestamp = (value?: string | null) => value ? new Date(value).toLocaleString(undefined,{timeZone:"Africa/Harare"}) : "Waiting";
 
-const DeploymentRow = ({ initialDeployment }: { initialDeployment: DeploymentStatusResponse }) => {
-  const { deployment, error, isLoading } = useDeploymentStatus(initialDeployment.deploymentId);
-  const current = deployment || initialDeployment;
-  const metadata = current.metadata || {};
-  const errorMessage = typeof metadata.errorMessage === "string" ? metadata.errorMessage : error;
-  const ingressHost = typeof metadata.ingressHost === "string" ? metadata.ingressHost : null;
+function DeploymentDetail({deployment,timeline}:{deployment:DeploymentStatusResponse;timeline:DeploymentStreamEvent[]}) {
+  const failed=deployment.status?.includes("FAILED"); const currentRank=rank(deployment.status);
+  const ingressHost=typeof deployment.metadata.ingressHost === "string" ? deployment.metadata.ingressHost : null;
+  const tls=deployment.metadata.tlsEnabled === true;
+  const error=typeof deployment.metadata.message === "string" ? deployment.metadata.message : null;
+  return <section className="app-card space-y-5">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">{deployment.serviceName||"Deployment"}</h2><p className="app-muted mt-1 break-all font-mono text-xs">{deployment.deploymentId}</p></div><DeploymentStatusBadge status={deployment.status}/></div>
+    <ol className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">{steps.map(([value,label],index)=>{const complete=!failed&&index<=currentRank;const Icon=complete?CheckCircle2:Circle;return <li key={value} className={`rounded-xl border p-3 text-xs font-semibold ${complete?"border-emerald-500/30 text-emerald-600":"border-[var(--app-border)] app-muted"}`}><Icon size={16} className="mb-2"/>{label}</li>;})}</ol>
+    {failed&&error?<div className="app-danger-panel text-sm">{error}</div>:null}
+    {deployment.status==="RUNNING"&&ingressHost?<a className="app-button-primary w-fit" href={`${tls?"https":"http"}://${ingressHost}`} target="_blank" rel="noreferrer">Open application <ExternalLink size={15}/></a>:null}
+    <div><h3 className="font-semibold">Timeline</h3><ol className="mt-3 space-y-3">{timeline.length?timeline.map(event=><li key={event.id} className="border-l-2 border-[var(--app-border)] pl-4"><div className="flex flex-wrap justify-between gap-2"><span className="text-sm font-medium">{event.message}</span><time className="app-muted text-xs">{formatTimestamp(event.timestamp)}</time></div><p className="app-muted mt-1 text-xs">{event.stage} · {event.status}</p></li>):<li className="app-muted text-sm">The current snapshot is available; earlier events will appear as they are replayed.</li>}</ol></div>
+  </section>;
+}
 
-  return (
-    <article className="app-card space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-base font-semibold">{current.serviceName || "Unnamed service"}</p>
-          <p className="app-muted mt-1 break-all font-mono text-xs">{current.deploymentId}</p>
-        </div>
-        <DeploymentStatusBadge status={current.status} />
-      </div>
-
-      <div className="grid gap-3 text-sm sm:grid-cols-2">
-        <div>
-          <p className="app-muted text-xs font-semibold uppercase tracking-wide">Last event</p>
-          <p className="mt-1 break-all">{current.eventType || "Waiting for deployment event"}</p>
-        </div>
-        <div>
-          <p className="app-muted text-xs font-semibold uppercase tracking-wide">Updated</p>
-          <p className="mt-1">{formatTimestamp(current.timestamp)}</p>
-        </div>
-      </div>
-
-      {isLoading && isDeploymentActive(current) ? <p className="app-muted text-xs">Refreshing deployment status...</p> : null}
-      {errorMessage ? <p className="text-sm font-medium text-[var(--app-danger)]">{errorMessage}</p> : null}
-      {ingressHost && current.status === "RUNNING" ? (
-        <a className="app-link inline-flex items-center gap-1 text-sm" href={`https://${ingressHost}`} target="_blank" rel="noreferrer">
-          Open live service <ExternalLink size={14} />
-        </a>
-      ) : null}
-
-      {Object.keys(metadata).length > 0 ? (
-        <details className="rounded-xl border border-[var(--app-border)] p-3">
-          <summary className="cursor-pointer text-sm font-semibold">Deployment details</summary>
-          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-            {Object.entries(metadata).map(([key, value]) => (
-              <div key={key} className="min-w-0">
-                <dt className="app-muted font-semibold">{key}</dt>
-                <dd className="mt-0.5 break-all">{typeof value === "string" ? value : JSON.stringify(value)}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      ) : null}
-    </article>
-  );
-};
-
-export default function Deployments() {
-  const [searchParams] = useSearchParams();
-  const projectId = searchParams.get("projectId")?.trim();
-  const [project, setProject] = useState<Project | null>(null);
-  const [deployments, setDeployments] = useState<DeploymentStatusResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(Boolean(projectId));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-
-    void Promise.all([getProject(projectId), getProjectDeployments(projectId)])
-      .then(([loadedProject, loadedDeployments]) => {
-        if (cancelled) return;
-        setProject(loadedProject);
-        setDeployments(loadedDeployments);
-      })
-      .catch((requestError) => {
-        if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Failed to load deployments");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [projectId]);
-
-  if (!projectId) {
-    return (
-      <div className="app-empty-state min-h-[24rem]">
-        <div className="app-empty-state-card">
-          <div className="app-empty-state-icon"><History size={32} /></div>
-          <h1 className="text-2xl font-semibold">Choose a project</h1>
-          <p className="app-page-subtitle">Open a project to view its deployment history.</p>
-          <Link className="app-button-primary mt-5" to="/dashboard/projects">View projects</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) return <div className="app-loading-state">Loading deployments...</div>;
-
-  if (error) {
-    return (
-      <div className="app-danger-panel flex items-center gap-3">
-        <AlertCircle size={20} />
-        <p className="text-sm font-medium">{error}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5 sm:space-y-6">
-      <div className="flex items-start gap-3 sm:items-center">
-        <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-accent-soft)] p-2.5 text-[var(--app-accent)] sm:p-3"><Rocket size={24} /></div>
-        <div className="min-w-0">
-          <h1 className="app-page-title">Deployments{project ? ` for ${project.name}` : ""}</h1>
-          <p className="app-page-subtitle">Monitor rollout activity and deployment history for this project.</p>
-        </div>
-      </div>
-
-      {deployments.length === 0 ? (
-        <div className="app-empty-state min-h-[20rem]">
-          <div className="app-empty-state-card">
-            <div className="app-empty-state-icon"><History size={32} /></div>
-            <h2 className="text-2xl font-semibold">No deployments yet</h2>
-            <p className="app-page-subtitle">Deploy an application service to see its progress here.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">{deployments.map((deployment) => <DeploymentRow key={deployment.deploymentId} initialDeployment={deployment} />)}</div>
-      )}
-    </div>
-  );
+export default function Deployments(){
+  const [params]=useSearchParams(); const projectId=params.get("projectId")?.trim();
+  const [project,setProject]=useState<Project|null>(null); const [selected,setSelected]=useState<string|null>(null);
+  const live=useProjectDeployments(projectId);
+  useEffect(()=>{if(projectId)void getProject(projectId).then(setProject).catch(()=>setProject(null));},[projectId]);
+  const current=useMemo(()=>live.deployments.find(item=>item.deploymentId===selected)||live.deployments[0],[live.deployments,selected]);
+  if(!projectId)return <div className="app-empty-state min-h-[24rem]"><div className="app-empty-state-card"><History size={32}/><h1 className="text-2xl font-semibold">Choose a project</h1><Link className="app-button-primary mt-5" to="/dashboard/projects">View projects</Link></div></div>;
+  if(live.isLoading)return <div className="app-loading-state">Loading deployments...</div>;
+  if(live.error&&!live.deployments.length)return <div className="app-danger-panel flex gap-3"><AlertCircle size={20}/>{live.error}</div>;
+  return <div className="space-y-5"><header className="flex items-center gap-3"><Rocket size={26}/><div><h1 className="app-page-title">Deployments{project?` for ${project.name}`:""}</h1><p className="app-page-subtitle">Live build and rollout activity.</p></div></header>
+    {!live.deployments.length?<div className="app-empty-state min-h-[20rem]"><div className="app-empty-state-card"><History size={32}/><h2 className="text-2xl font-semibold">No deployments yet</h2></div></div>:
+    <div className="grid gap-5 lg:grid-cols-[20rem_1fr]"><aside className="space-y-2">{live.deployments.map(item=><button key={item.deploymentId} type="button" onClick={()=>setSelected(item.deploymentId)} className={`app-card w-full text-left ${current?.deploymentId===item.deploymentId?"border-[var(--app-accent)]":""}`}><div className="flex justify-between gap-2"><span className="truncate font-semibold">{item.serviceName||"Deployment"}</span><DeploymentStatusBadge status={item.status}/></div><p className="app-muted mt-2 text-xs">{formatTimestamp(item.timestamp)}</p></button>)}</aside>{current?<DeploymentDetail deployment={current} timeline={live.timelines[current.deploymentId]||[]}/>:null}</div>}
+  </div>;
 }

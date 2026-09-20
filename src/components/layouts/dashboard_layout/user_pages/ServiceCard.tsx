@@ -37,6 +37,7 @@ const ServiceCard = ({
     try {
       const response = await triggerDeploy(service.id);
       setTriggeredDeploymentId(response.deploymentId);
+      try { localStorage.setItem(`shiply.active-deployment.${service.id}`, response.deploymentId); } catch { /* optional reload cache */ }
       showToast(`Deployment started for ${service.name}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to start deployment";
@@ -128,7 +129,7 @@ const ServiceCard = ({
           {displayedDeployment?.eventType ? <p className="app-muted mt-2 text-xs">{displayedDeployment.eventType}</p> : null}
           {errorMessage ? <p className="mt-2 text-xs font-medium text-[var(--app-danger)]">{errorMessage}</p> : null}
           {ingressHost && displayedDeployment?.status === "RUNNING" ? (
-            <a className="app-link mt-2 inline-block text-xs" href={`https://${ingressHost}`} target="_blank" rel="noreferrer">
+            <a className="app-link mt-2 inline-block text-xs" href={`${metadata.tlsEnabled ? "https" : "http"}://${ingressHost}`} target="_blank" rel="noreferrer">
               Open live service
             </a>
           ) : null}

@@ -1,6 +1,7 @@
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string; active?: boolean }> = {
+  QUEUED: { label: "Queued", className: "border-amber-500/25 bg-amber-500/10 text-amber-600", active: true },
   BUILDING: { label: "Building", className: "border-amber-500/25 bg-amber-500/10 text-amber-600", active: true },
   BUILD_SUCCEEDED: { label: "Build succeeded", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
   ORCHESTRATING: { label: "Deploying", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
@@ -10,7 +11,7 @@ const statusConfig: Record<string, { label: string; className: string; active?: 
   DEPLOY_FAILED: { label: "Deployment failed", className: "border-rose-500/25 bg-rose-500/10 text-rose-500" },
 };
 
-export const deploymentStatusLabel = (status?: string | null) => statusConfig[status || ""]?.label || status || "Starting";
+const deploymentStatusLabel = (status?: string | null) => statusConfig[status || ""]?.label || status || "Starting";
 
 export default function DeploymentStatusBadge({ status }: { status?: string | null }) {
   const config = statusConfig[status || ""] || {

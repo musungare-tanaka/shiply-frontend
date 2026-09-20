@@ -6,6 +6,7 @@ import type {
   CreateProjectInput,
   DeployApplicationServiceResponse,
   DeploymentStatusResponse,
+  DeploymentStreamEvent,
   GitHubRepositoryAnalysis,
   GitHubBranch,
   GitHubInstallUrlResponse,
@@ -24,7 +25,7 @@ import type {
   PricingCatalog,
 } from "./types";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:9091").replace(/\/$/, "");
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:9091").replace(/\/$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -266,3 +267,20 @@ export const getProjectDeployments = (projectId: string) =>
   request<DeploymentStatusResponse[]>(`/api/v1/projects/${projectId}/deployments`, {
     headers: buildHeaders(),
   });
+
+export const getDeploymentStreamToken = (deploymentId: string) =>
+  request<{ token: string }>(`/api/v1/deployments/${deploymentId}/stream-token`, { method: "POST", headers: buildHeaders() });
+
+export const getProjectDeploymentStreamToken = (projectId: string) =>
+  request<{ token: string }>(`/api/v1/projects/${projectId}/deployments/stream-token`, { method: "POST", headers: buildHeaders() });
+
+export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous?: DeploymentStatusResponse | null): DeploymentStatusResponse => ({
+  deploymentId: event.deploymentId,
+  projectId: event.projectId || previous?.projectId || "",
+  serviceId: previous?.serviceId || "",
+  serviceName: previous?.serviceName || "",
+  status: event.status,
+  eventType: event.stage,
+  timestamp: event.timestamp,
+  metadata: { ...(previous?.metadata || {}), message: event.message, ingressHost: event.ingressHost, tlsEnabled: event.tlsEnabled, eventId: event.id },
+});
