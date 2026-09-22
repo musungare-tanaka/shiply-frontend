@@ -3,8 +3,10 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 const statusConfig: Record<string, { label: string; className: string; active?: boolean }> = {
   QUEUED: { label: "Queued", className: "border-amber-500/25 bg-amber-500/10 text-amber-600", active: true },
   BUILDING: { label: "Building", className: "border-amber-500/25 bg-amber-500/10 text-amber-600", active: true },
+  BUILD_RETRYING: { label: "Retrying build", className: "border-amber-500/25 bg-amber-500/10 text-amber-600", active: true },
   BUILD_SUCCEEDED: { label: "Build succeeded", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
   ORCHESTRATING: { label: "Deploying", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
+  DEPLOY_RETRYING: { label: "Retrying deployment", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
   DEPLOYED: { label: "Deployed", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
   RUNNING: { label: "Live", className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600" },
   BUILD_FAILED: { label: "Build failed", className: "border-rose-500/25 bg-rose-500/10 text-rose-500" },

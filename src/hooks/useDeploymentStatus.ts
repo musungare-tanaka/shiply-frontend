@@ -23,6 +23,7 @@ interface DeploymentEntry {
   isLoading: boolean;
   listeners: Set<() => void>;
   timer: number | null;
+  reconnectTimer: number | null;
   isFetching: boolean;
   snapshot: DeploymentStatusState;
   source: EventSource | null;
@@ -47,6 +48,7 @@ const getEntry = (deploymentId: string) => {
       isLoading: true,
       listeners: new Set(),
       timer: null,
+      reconnectTimer: null,
       isFetching: false,
       snapshot: { deployment: null, error: null, isLoading: true, isTracking: true },
       source: null,
@@ -73,6 +75,13 @@ const clearTimer = (entry: DeploymentEntry) => {
   if (entry.timer !== null) {
     window.clearTimeout(entry.timer);
     entry.timer = null;
+  }
+};
+
+const clearReconnectTimer = (entry: DeploymentEntry) => {
+  if (entry.reconnectTimer !== null) {
+    window.clearTimeout(entry.reconnectTimer);
+    entry.reconnectTimer = null;
   }
 };
 
@@ -108,12 +117,12 @@ const connectStream = async (deploymentId: string, entry: DeploymentEntry) => {
     source.onerror = () => {
       source.close(); entry.source = null; entry.streamFailures += 1;
       if (entry.streamFailures >= 3) { entry.polling = true; schedule(deploymentId, entry); }
-      else window.setTimeout(() => void connectStream(deploymentId, entry), 1000);
+      else entry.reconnectTimer = window.setTimeout(() => { entry.reconnectTimer = null; void connectStream(deploymentId, entry); }, 1000);
     };
   } catch {
     entry.streamFailures += 1;
     if (entry.streamFailures >= 3) { entry.polling = true; schedule(deploymentId, entry); }
-    else window.setTimeout(() => void connectStream(deploymentId, entry), 1000);
+    else entry.reconnectTimer = window.setTimeout(() => { entry.reconnectTimer = null; void connectStream(deploymentId, entry); }, 1000);
   }
 };
 
@@ -152,7 +161,7 @@ const subscribe = (deploymentId: string, listener: () => void) => {
 
   return () => {
     entry.listeners.delete(listener);
-    if (entry.listeners.size === 0) { clearTimer(entry); entry.source?.close(); entry.source = null; }
+    if (entry.listeners.size === 0) { clearTimer(entry); clearReconnectTimer(entry); entry.source?.close(); entry.source = null; }
   };
 };
 

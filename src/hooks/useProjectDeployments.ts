@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL, deploymentFromStreamEvent, getProjectDeployments, getProjectDeploymentStreamToken } from "../lib/api";
 import type { DeploymentStatusResponse, DeploymentStreamEvent } from "../lib/types";
 
@@ -11,14 +11,15 @@ export interface ProjectDeploymentsState {
 
 export const useProjectDeployments = (projectId?: string | null): ProjectDeploymentsState => {
   const [state, setState] = useState<ProjectDeploymentsState>({ deployments: [], timelines: {}, isLoading: Boolean(projectId), error: null });
+  const pollTimerRef = useRef<number | null>(null); const reconnectTimerRef = useRef<number | null>(null);
   useEffect(() => {
     if (!projectId) return;
-    let stopped = false; let source: EventSource | null = null; let failures = 0; let pollTimer: number | null = null; let reconnectTimer: number | null = null;
+    let stopped = false; let source: EventSource | null = null; let failures = 0;
     const load = async () => {
       try { const deployments = await getProjectDeployments(projectId); if (!stopped) setState((s) => ({ ...s, deployments, isLoading: false, error: null })); }
       catch (error) { if (!stopped) setState((s) => ({ ...s, isLoading: false, error: error instanceof Error ? error.message : "Failed to load deployments" })); }
     };
-    const poll = async () => { await load(); if (!stopped) pollTimer = window.setTimeout(poll, 3000); };
+    const poll = async () => { await load(); if (!stopped) pollTimerRef.current = window.setTimeout(poll, 3000); };
     const connect = async () => {
       if (import.meta.env.MODE === "test" || typeof EventSource === "undefined") { void poll(); return; }
       try {
@@ -37,12 +38,12 @@ export const useProjectDeployments = (projectId?: string | null): ProjectDeploym
             return { deployments, timelines: { ...current.timelines, [event.deploymentId]: timeline }, isLoading: false, error: null };
           });
         });
-        source.onerror = () => { source?.close(); source = null; failures += 1; if (!stopped) { if (failures >= 3) void poll(); else reconnectTimer = window.setTimeout(connect, 1000); } };
-      } catch { failures += 1; if (!stopped) { if (failures >= 3) void poll(); else reconnectTimer = window.setTimeout(connect, 1000); } }
+        source.onerror = () => { source?.close(); source = null; failures += 1; if (!stopped) { if (failures >= 3) void poll(); else reconnectTimerRef.current = window.setTimeout(connect, 1000); } };
+      } catch { failures += 1; if (!stopped) { if (failures >= 3) void poll(); else reconnectTimerRef.current = window.setTimeout(connect, 1000); } }
     };
     const onStorage = (event: StorageEvent) => { if (event.key === `shiply.project-deployments.${projectId}` && event.newValue) try { const deployments = JSON.parse(event.newValue) as DeploymentStatusResponse[]; setState((s) => ({ ...s, deployments })); } catch { /* ignore malformed cache */ } };
     window.addEventListener("storage", onStorage); void load().then(connect);
-    return () => { stopped=true; source?.close(); if(pollTimer)clearTimeout(pollTimer); if(reconnectTimer)clearTimeout(reconnectTimer); window.removeEventListener("storage",onStorage); };
+    return () => { stopped=true; source?.close(); if(pollTimerRef.current)clearTimeout(pollTimerRef.current); if(reconnectTimerRef.current)clearTimeout(reconnectTimerRef.current); window.removeEventListener("storage",onStorage); };
   }, [projectId]);
   return state;
 };

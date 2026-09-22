@@ -7,14 +7,14 @@ import type { DeploymentStatusResponse, DeploymentStreamEvent, Project } from ".
 import DeploymentStatusBadge from "./DeploymentStatusBadge";
 
 const steps = [["QUEUED","Queued"],["BUILDING","Building"],["BUILD_SUCCEEDED","Build succeeded"],["ORCHESTRATING","Deploying"],["DEPLOYED","Deployed"],["RUNNING","Running"]] as const;
-const rank = (status?: string | null) => steps.findIndex(([value]) => value === status);
+const rank = (status?: string | null) => status === "BUILD_RETRYING" ? 1 : status === "DEPLOY_RETRYING" ? 3 : steps.findIndex(([value]) => value === status);
 const formatTimestamp = (value?: string | null) => value ? new Date(value).toLocaleString(undefined,{timeZone:"Africa/Harare"}) : "Waiting";
 
 function DeploymentDetail({deployment,timeline}:{deployment:DeploymentStatusResponse;timeline:DeploymentStreamEvent[]}) {
   const failed=deployment.status?.includes("FAILED"); const currentRank=rank(deployment.status);
   const ingressHost=typeof deployment.metadata.ingressHost === "string" ? deployment.metadata.ingressHost : null;
   const tls=deployment.metadata.tlsEnabled === true;
-  const error=typeof deployment.metadata.message === "string" ? deployment.metadata.message : null;
+  const error=typeof deployment.metadata.errorMessage === "string" ? deployment.metadata.errorMessage : typeof deployment.metadata.message === "string" ? deployment.metadata.message : null;
   return <section className="app-card space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">{deployment.serviceName||"Deployment"}</h2><p className="app-muted mt-1 break-all font-mono text-xs">{deployment.deploymentId}</p></div><DeploymentStatusBadge status={deployment.status}/></div>
     <ol className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6">{steps.map(([value,label],index)=>{const complete=!failed&&index<=currentRank;const Icon=complete?CheckCircle2:Circle;return <li key={value} className={`rounded-xl border p-3 text-xs font-semibold ${complete?"border-emerald-500/30 text-emerald-600":"border-[var(--app-border)] app-muted"}`}><Icon size={16} className="mb-2"/>{label}</li>;})}</ol>
