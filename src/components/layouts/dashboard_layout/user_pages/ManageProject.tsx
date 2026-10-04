@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Layers, Plus, Rocket, Settings } from "lucide-react";
 import { getProject } from "../../../../lib/api";
@@ -19,10 +19,16 @@ export default function ManageProject() {
   const [showAddService, setShowAddService] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [activeService, setActiveService] = useState<Service | null>(null);
+  const retryTimers = useRef(new Map<string, number[]>());
+  const refreshInFlight = useRef(new Set<string>());
+  const projectGeneration = useRef(0);
+  const mounted = useRef(false);
+  const activeDeploymentsById = useRef(new Map<string, string>());
   const liveDeployments = useProjectDeployments(projectId);
   const activeDeployments = liveDeployments.deployments.reduce<Record<string, DeploymentStatusResponse>>((result, deployment) => {
     if (!result[deployment.serviceId]) result[deployment.serviceId] = deployment; return result;
   }, {});
+  activeDeploymentsById.current = new Map(liveDeployments.deployments.map((deployment) => [deployment.deploymentId, deployment.serviceId]));
 
   const fetchProject = useCallback(async () => {
     if (!projectId) {
@@ -45,6 +51,63 @@ export default function ManageProject() {
   useEffect(() => {
     void fetchProject();
   }, [fetchProject]);
+
+  useEffect(() => {
+    mounted.current = true;
+    retryTimers.current.forEach((timers) => timers.forEach((timer) => window.clearTimeout(timer)));
+    retryTimers.current.clear();
+    refreshInFlight.current.clear();
+    projectGeneration.current += 1;
+    return () => {
+      mounted.current = false;
+      retryTimers.current.forEach((timers) => timers.forEach((timer) => window.clearTimeout(timer)));
+      retryTimers.current.clear();
+      refreshInFlight.current.clear();
+      projectGeneration.current += 1;
+    };
+  }, [projectId]);
+
+  const refreshServicesForTerminalDeployment = useCallback(async (deploymentId: string, status: string) => {
+    if (!projectId || !["RUNNING", "BUILD_FAILED", "DEPLOY_FAILED"].includes(status)) return;
+    const currentProjectId = projectId;
+    const serviceId = activeDeploymentsById.current.get(deploymentId);
+    if (!serviceId) return;
+    const timerKey = `${currentProjectId}:${deploymentId}`;
+    if (refreshInFlight.current.has(timerKey)) return;
+    refreshInFlight.current.add(timerKey);
+
+    const generation = projectGeneration.current;
+    const refresh = async (attempt: number): Promise<void> => {
+      try {
+        const result = await getProject(currentProjectId);
+        if (generation !== projectGeneration.current || !mounted.current) {
+          refreshInFlight.current.delete(timerKey);
+          return;
+        }
+        setProject((current) => {
+          if (!current || current.id !== currentProjectId) return current;
+          const refreshedById = new Map((result.services || []).map((service) => [service.id, service]));
+          return { ...current, services: (current.services || []).map((service) => refreshedById.get(service.id) || service) };
+        });
+
+        const refreshedService = result.services?.find((service) => service.id === serviceId);
+        const shouldRetry = refreshedService?.status === "PROVISIONING" && ["RUNNING", "DEPLOY_FAILED"].includes(status) && attempt < 3;
+        if (shouldRetry) {
+          const delays = [2000, 4000, 8000];
+          const timer = window.setTimeout(() => {
+            retryTimers.current.set(timerKey, (retryTimers.current.get(timerKey) || []).filter((scheduled) => scheduled !== timer));
+            void refresh(attempt + 1);
+          }, delays[attempt]);
+          retryTimers.current.set(timerKey, [...(retryTimers.current.get(timerKey) || []), timer]);
+        } else {
+          refreshInFlight.current.delete(timerKey);
+        }
+      } catch {
+        refreshInFlight.current.delete(timerKey);
+      }
+    };
+    void refresh(0);
+  }, [projectId]);
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
@@ -147,6 +210,7 @@ export default function ManageProject() {
               service={service}
               onOpenSettings={setActiveService}
               activeDeployment={activeDeployments[service.id]}
+              onDeploymentTerminal={(deploymentId, status) => void refreshServicesForTerminalDeployment(deploymentId, status)}
             />
           ))}
         </div>

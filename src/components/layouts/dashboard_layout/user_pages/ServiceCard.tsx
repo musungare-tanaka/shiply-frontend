@@ -1,5 +1,5 @@
 import { AppWindow, Database, GitBranch, Rocket, Settings } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { triggerDeploy } from "../../../../lib/api";
 import type { DeploymentStatusResponse, Service } from "../../../../lib/types";
 import { useToast } from "../../../../hooks/useToast";
@@ -11,10 +11,12 @@ const ServiceCard = ({
   service,
   onOpenSettings,
   activeDeployment,
+  onDeploymentTerminal,
 }: {
   service: Service;
   onOpenSettings: (service: Service) => void;
   activeDeployment?: DeploymentStatusResponse;
+  onDeploymentTerminal?: (deploymentId: string, status: string) => void;
 }) => {
   const isDatabase = service.type === "DATABASE";
   const { showToast } = useToast();
@@ -24,10 +26,32 @@ const ServiceCard = ({
   const deploymentId = triggeredDeploymentId || activeDeployment?.deploymentId;
   const { deployment, error: statusError, isLoading, isTracking } = useDeploymentStatus(deploymentId);
   const displayedDeployment = deployment || (triggeredDeploymentId ? null : activeDeployment) || null;
+  const terminalDeploymentStatus = displayedDeployment?.status === "RUNNING" || displayedDeployment?.status === "BUILD_FAILED" || displayedDeployment?.status === "DEPLOY_FAILED"
+    ? displayedDeployment.status
+    : null;
+  const reportedTerminalDeployments = useRef(new Set<string>());
+  const initialDeploymentIds = useRef(new Set<string>());
+  const firstRender = useRef(true);
   const isDeploying = isStartingDeployment || isTracking || isDeploymentActive(activeDeployment);
   const metadata = displayedDeployment?.metadata || {};
   const errorMessage = typeof metadata.errorMessage === "string" ? metadata.errorMessage : deployError || statusError;
   const ingressHost = typeof metadata.ingressHost === "string" ? metadata.ingressHost : null;
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      if (deploymentId && terminalDeploymentStatus) {
+        initialDeploymentIds.current.add(deploymentId);
+        return;
+      }
+    }
+    if (!deploymentId || !terminalDeploymentStatus || !onDeploymentTerminal) return;
+    if (initialDeploymentIds.current.has(deploymentId)) return;
+    if (reportedTerminalDeployments.current.has(deploymentId)) return;
+
+    reportedTerminalDeployments.current.add(deploymentId);
+    onDeploymentTerminal(deploymentId, terminalDeploymentStatus);
+  }, [deploymentId, onDeploymentTerminal, terminalDeploymentStatus]);
 
   const handleDeploy = async () => {
     if (!service.id || isDeploying) return;
