@@ -32,7 +32,10 @@ const ServiceCard = ({
   const reportedTerminalDeployments = useRef(new Set<string>());
   const initialDeploymentIds = useRef(new Set<string>());
   const firstRender = useRef(true);
-  const isDeploying = isStartingDeployment || isTracking || isDeploymentActive(activeDeployment);
+  // Prefer the freshest status returned by the deployment tracker. The
+  // project snapshot can lag behind and leave the button stuck on "Deploying"
+  // after the tracked deployment has already reached RUNNING.
+  const isDeploying = isStartingDeployment || isTracking || isDeploymentActive(displayedDeployment);
   const metadata = displayedDeployment?.metadata || {};
   const errorMessage = typeof metadata.errorMessage === "string" ? metadata.errorMessage : deployError || statusError;
   const ingressHost = typeof metadata.ingressHost === "string" ? metadata.ingressHost : null;
