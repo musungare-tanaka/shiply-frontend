@@ -7,6 +7,7 @@ import type {
   DeployApplicationServiceResponse,
   DeploymentStatusResponse,
   DeploymentStreamEvent,
+  DeploymentHistoryPage,
   GitHubRepositoryAnalysis,
   GitHubBranch,
   GitHubInstallUrlResponse,
@@ -267,6 +268,24 @@ export const getProjectDeployments = (projectId: string) =>
   request<DeploymentStatusResponse[]>(`/api/v1/projects/${projectId}/deployments`, {
     headers: buildHeaders(),
   });
+
+export interface DeploymentHistoryFilters {
+  page?: number;
+  size?: number;
+  projectId?: string;
+  serviceId?: string;
+  status?: string;
+}
+
+export const getDeploymentHistory = (filters: DeploymentHistoryFilters = {}) => {
+  const query = new URLSearchParams();
+  query.set("page", String(filters.page ?? 0));
+  query.set("size", String(filters.size ?? 20));
+  if (filters.projectId) query.set("projectId", filters.projectId);
+  if (filters.serviceId) query.set("serviceId", filters.serviceId);
+  if (filters.status) query.set("status", filters.status);
+  return request<DeploymentHistoryPage>(`/api/v1/deployments?${query.toString()}`, { headers: buildHeaders() });
+};
 
 export const getDeploymentStreamToken = (deploymentId: string) =>
   request<{ token: string }>(`/api/v1/deployments/${deploymentId}/stream-token`, { method: "POST", headers: buildHeaders() });

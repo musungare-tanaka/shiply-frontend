@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getPaymentHistory, getPaymentStatus, getPricingCatalog, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getDeploymentHistory, getPaymentHistory, getPaymentStatus, getPricingCatalog, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -31,6 +31,17 @@ describe("deployment API calls", () => {
       "http://localhost:9091/api/v1/deployments/deploy-1",
       "http://localhost:9091/api/v1/projects/project-1/deployments",
     ]);
+  });
+
+  it("loads authenticated user-wide deployment history with pagination and filters", async () => {
+    const history = { content: [], page: 1, size: 20, totalElements: 0, totalPages: 0 };
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => history });
+
+    await expect(getDeploymentHistory({ page: 1, projectId: "project 1", serviceId: "service-1", status: "BUILDING" })).resolves.toEqual(history);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:9091/api/v1/deployments?page=1&size=20&projectId=project+1&serviceId=service-1&status=BUILDING",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer test-token" }) }),
+    );
   });
 
   it("loads billing, initiates EcoCash, and reads Shiply payment status", async () => {

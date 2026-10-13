@@ -274,6 +274,27 @@ export interface DeploymentStatusResponse {
   metadata: Record<string, unknown>;
 }
 
+export interface DeploymentHistoryItem {
+  deploymentId: string;
+  serviceId: string;
+  serviceName: string;
+  projectId: string;
+  projectName: string;
+  status: string;
+  createdAt: string;
+  finishedAt: string | null;
+  appUrl: string | null;
+  failureReason: string | null;
+}
+
+export interface DeploymentHistoryPage {
+  content: DeploymentHistoryItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface DeploymentStreamEvent {
   id: string;
   deploymentId: string;
