@@ -7,6 +7,7 @@ import Signup from "./components/auth/signup/page";
 import ForgotPassword from "./components/auth/forgot-password/page";
 import VerifyResetOtp from "./components/auth/verify-reset-otp/page";
 import ResetPassword from "./components/auth/reset-password/page";
+import CopyResetCode from "./components/auth/copy-reset-code/page";
 import ProtectedRoute from "./components/protectedRoutes/page";
 import GuestRoute from "./components/guestRoutes/page";
 import UserLayout from "./components/layouts/dashboard_layout/page";
@@ -19,7 +20,8 @@ export function AppRoutes() {
     || location.pathname === "/signup"
     || location.pathname === "/forgot-password"
     || location.pathname === "/verify-reset-otp"
-    || location.pathname === "/reset-password";
+    || location.pathname === "/reset-password"
+    || location.pathname === "/copy-reset-code";
 
   return (
     <div
@@ -32,6 +34,7 @@ export function AppRoutes() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/copy-reset-code" element={<CopyResetCode />} />
         <Route
           path="/login"
           element={(
@@ -56,22 +59,8 @@ export function AppRoutes() {
             </GuestRoute>
           )}
         />
-        <Route
-          path="/verify-reset-otp"
-          element={(
-            <GuestRoute>
-              <VerifyResetOtp />
-            </GuestRoute>
-          )}
-        />
-        <Route
-          path="/reset-password"
-          element={(
-            <GuestRoute>
-              <ResetPassword />
-            </GuestRoute>
-          )}
-        />
+        <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected routes */}
         <Route

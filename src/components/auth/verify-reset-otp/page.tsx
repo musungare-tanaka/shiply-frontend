@@ -4,7 +4,9 @@ import AuthShell from "../AuthShell";
 import BASE_URL, { getErrorMessage } from "../../../util/util";
 import {
   clearResetFlow,
+  clearPendingResetOtp,
   getResetEmail,
+  getPendingResetOtp,
   saveResetEmail,
   saveResetToken,
 } from "../resetFlowStorage";
@@ -15,15 +17,19 @@ const VerifyResetOtp = () => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailRequired, setEmailRequired] = useState(false);
 
   useEffect(() => {
     const storedEmail = getResetEmail();
-    if (!storedEmail) {
+    const stagedOtp = getPendingResetOtp();
+    if (!storedEmail && !stagedOtp) {
       navigate("/forgot-password", { replace: true });
       return;
     }
 
     setEmail(storedEmail);
+    setEmailRequired(!storedEmail);
+    if (stagedOtp) setOtp(stagedOtp);
   }, [navigate]);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -45,6 +51,7 @@ const VerifyResetOtp = () => {
       }
 
       const data = await response.json();
+      clearPendingResetOtp();
       saveResetEmail(email);
       saveResetToken(data.resetToken);
       navigate("/reset-password");
@@ -84,18 +91,22 @@ const VerifyResetOtp = () => {
         {error ? <p className="text-red-500 text-sm text-center">{error}</p> : null}
 
         <div>
-          <label className="block text-sm font-medium text-gray-600">Email</label>
+            <label htmlFor="reset-email" className="block text-sm font-medium text-gray-600">Email</label>
           <input
+              id="reset-email"
             type="email"
             value={email}
-            disabled
+              onChange={(event) => setEmail(event.target.value)}
+              required={emailRequired}
+              disabled={!emailRequired}
             className="mt-1 w-full rounded-md border text-black bg-gray-100 border-gray-300 px-3 py-2"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600">Verification code</label>
+            <label htmlFor="verification-code" className="block text-sm font-medium text-gray-600">Verification code</label>
           <input
+              id="verification-code"
             type="text"
             inputMode="numeric"
             pattern="\d{6}"
