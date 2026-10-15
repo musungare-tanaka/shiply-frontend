@@ -1,5 +1,5 @@
 import { AlertCircle, ExternalLink, History, Rocket } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getProjects } from "../../../../lib/api";
 import type { DeploymentHistoryItem, Project } from "../../../../lib/types";
@@ -39,15 +39,17 @@ const liveUrlFrom = (deployment: DeploymentHistoryItem, metadata: Record<string,
   return `${metadata.tlsEnabled === true ? "https" : "http"}://${host}`;
 };
 
-function DeploymentRow({ deployment }: { deployment: DeploymentHistoryItem }) {
+function DeploymentRow({ deployment, onTerminalStatus }: { deployment: DeploymentHistoryItem; onTerminalStatus: () => void }) {
   const initialTerminal = isDeploymentTerminal(deployment.status);
   const stream = useDeploymentStatus(initialTerminal ? null : deployment.deploymentId);
   const [now, setNow] = useState(() => Date.now());
+  const handledTerminalEvent = useRef<string | null>(null);
   const status = stream.deployment?.status || deployment.status;
   const terminal = isDeploymentTerminal(status);
   const finishedAt = terminal ? stream.deployment?.timestamp || deployment.finishedAt || null : null;
   const metadata = stream.deployment?.metadata || {};
   const appUrl = liveUrlFrom(deployment, metadata);
+  const terminalEventId = typeof metadata.eventId === "string" ? metadata.eventId : null;
   const failureReason = typeof metadata.errorMessage === "string"
     ? metadata.errorMessage
     : typeof metadata.message === "string" ? metadata.message : deployment.failureReason;
@@ -56,6 +58,12 @@ function DeploymentRow({ deployment }: { deployment: DeploymentHistoryItem }) {
     const timer = window.setInterval(() => setNow(Date.now()), terminal ? 60_000 : 1000);
     return () => window.clearInterval(timer);
   }, [terminal]);
+
+  useEffect(() => {
+    if (!terminal || !terminalEventId || handledTerminalEvent.current === terminalEventId) return;
+    handledTerminalEvent.current = terminalEventId;
+    onTerminalStatus();
+  }, [onTerminalStatus, terminal, terminalEventId]);
 
   return (
     <tr className="border-t border-[var(--app-border)] align-middle">
@@ -77,7 +85,7 @@ function DeploymentRow({ deployment }: { deployment: DeploymentHistoryItem }) {
       </td>
       <td className="px-4 py-4 whitespace-nowrap">{formatDuration(deployment.createdAt, finishedAt, now)}</td>
       <td className="px-4 py-4">
-        {appUrl ? <a className="app-link inline-flex items-center gap-1 whitespace-nowrap text-sm" href={appUrl} target="_blank" rel="noreferrer">Visit <ExternalLink size={14} /></a> : <span className="app-muted">—</span>}
+        {status !== "SUPERSEDED" && appUrl ? <a className="app-link inline-flex items-center gap-1 whitespace-nowrap text-sm" href={appUrl} target="_blank" rel="noreferrer">Visit <ExternalLink size={14} /></a> : <span className="app-muted">—</span>}
       </td>
     </tr>
   );
@@ -97,6 +105,8 @@ export default function Deployments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get("projectId")?.trim() || "";
   const history = useDeploymentHistory(projectId || null);
+  const refreshHistory = history.refresh;
+  const onTerminalStatus = useCallback(() => { void refreshHistory(); }, [refreshHistory]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
@@ -172,7 +182,7 @@ export default function Deployments() {
               <thead className="app-muted bg-[var(--app-surface-soft)] text-xs uppercase tracking-wide">
                 <tr><th className="px-4 py-3">Service</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Started</th><th className="px-4 py-3">Duration</th><th className="px-4 py-3">Application</th></tr>
               </thead>
-              <tbody>{history.deployments.map((deployment) => <DeploymentRow key={deployment.deploymentId} deployment={deployment} />)}</tbody>
+              <tbody>{history.deployments.map((deployment) => <DeploymentRow key={deployment.deploymentId} deployment={deployment} onTerminalStatus={onTerminalStatus} />)}</tbody>
             </table>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">

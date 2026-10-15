@@ -41,4 +41,16 @@ describe("useDeploymentHistory", () => {
     expect(result.current.totalElements).toBe(0);
     expect(result.current.error).toBeNull();
   });
+
+  it("refreshes the first page without entering the loading state", async () => {
+    getHistory.mockResolvedValueOnce(page(0, ["deploy-1"])).mockResolvedValueOnce(page(0, ["deploy-1", "deploy-2"]));
+    const { result } = renderHook(() => useDeploymentHistory());
+    await waitFor(() => expect(result.current.deployments).toHaveLength(1));
+
+    await act(async () => { await result.current.refresh(); });
+
+    expect(result.current.deployments).toHaveLength(2);
+    expect(result.current.isLoading).toBe(false);
+    expect(getHistory).toHaveBeenNthCalledWith(2, { page: 0, size: 20, projectId: undefined });
+  });
 });

@@ -9,6 +9,7 @@ const statusConfig: Record<string, { label: string; className: string; active?: 
   DEPLOY_RETRYING: { label: "Retrying deployment", className: "border-sky-500/25 bg-sky-500/10 text-sky-600", active: true },
   DEPLOYED: { label: "Deployed", className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600" },
   RUNNING: { label: "Live", className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600" },
+  SUPERSEDED: { label: "Superseded", className: "border-gray-400/25 bg-gray-400/10 text-gray-500" },
   BUILD_FAILED: { label: "Build failed", className: "border-rose-500/25 bg-rose-500/10 text-rose-500" },
   DEPLOY_FAILED: { label: "Deployment failed", className: "border-rose-500/25 bg-rose-500/10 text-rose-500" },
 };

@@ -26,7 +26,7 @@ const ServiceCard = ({
   const deploymentId = triggeredDeploymentId || activeDeployment?.deploymentId;
   const { deployment, error: statusError, isLoading, isTracking } = useDeploymentStatus(deploymentId);
   const displayedDeployment = deployment || (triggeredDeploymentId ? null : activeDeployment) || null;
-  const terminalDeploymentStatus = displayedDeployment?.status === "RUNNING" || displayedDeployment?.status === "BUILD_FAILED" || displayedDeployment?.status === "DEPLOY_FAILED"
+  const terminalDeploymentStatus = displayedDeployment?.status === "RUNNING" || displayedDeployment?.status === "BUILD_FAILED" || displayedDeployment?.status === "DEPLOY_FAILED" || displayedDeployment?.status === "SUPERSEDED"
     ? displayedDeployment.status
     : null;
   const reportedTerminalDeployments = useRef(new Set<string>());

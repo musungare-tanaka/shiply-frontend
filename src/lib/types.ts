@@ -263,12 +263,26 @@ export interface DeployApplicationServiceResponse {
   deploymentId: string;
 }
 
+export type DeploymentStatus =
+  | "QUEUED"
+  | "BUILDING"
+  | "BUILD_RETRYING"
+  | "BUILD_SUCCEEDED"
+  | "ORCHESTRATING"
+  | "DEPLOY_RETRYING"
+  | "DEPLOYED"
+  | "RUNNING"
+  | "BUILD_FAILED"
+  | "DEPLOY_FAILED"
+  | "SUPERSEDED"
+  | (string & {});
+
 export interface DeploymentStatusResponse {
   deploymentId: string;
   projectId: string;
   serviceId: string;
   serviceName: string;
-  status: string | null;
+  status: DeploymentStatus | null;
   eventType: string | null;
   timestamp: string | null;
   metadata: Record<string, unknown>;
@@ -280,7 +294,7 @@ export interface DeploymentHistoryItem {
   serviceName: string;
   projectId: string;
   projectName: string;
-  status: string;
+  status: DeploymentStatus;
   createdAt: string;
   finishedAt: string | null;
   appUrl: string | null;

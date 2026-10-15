@@ -293,7 +293,7 @@ export const getDeploymentStreamToken = (deploymentId: string) =>
 export const getProjectDeploymentStreamToken = (projectId: string) =>
   request<{ token: string }>(`/api/v1/projects/${projectId}/deployments/stream-token`, { method: "POST", headers: buildHeaders() });
 
-const deploymentStatusRank: Record<string, number> = { QUEUED: 0, BUILDING: 1, BUILD_RETRYING: 1, BUILD_SUCCEEDED: 2, ORCHESTRATING: 3, DEPLOY_RETRYING: 3, DEPLOYED: 4, RUNNING: 5, BUILD_FAILED: 2, DEPLOY_FAILED: 5 };
+const deploymentStatusRank: Record<string, number> = { QUEUED: 0, BUILDING: 1, BUILD_RETRYING: 1, BUILD_SUCCEEDED: 2, ORCHESTRATING: 3, DEPLOY_RETRYING: 3, DEPLOYED: 4, RUNNING: 5, BUILD_FAILED: 2, DEPLOY_FAILED: 5, SUPERSEDED: 6 };
 
 export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous?: DeploymentStatusResponse | null): DeploymentStatusResponse => previous &&
   ((previous.status === "BUILD_FAILED" || previous.status === "DEPLOY_FAILED") ||

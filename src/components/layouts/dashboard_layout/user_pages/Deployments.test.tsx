@@ -26,7 +26,7 @@ const deployment: DeploymentHistoryItem = {
 const defaultHistory = () => ({
   deployments: [deployment], page: 0, totalPages: 1, totalElements: 1,
   isLoading: false, isLoadingMore: false, error: null, hasMore: false,
-  retry: vi.fn(), loadMore: vi.fn(),
+  retry: vi.fn(), loadMore: vi.fn(), refresh: vi.fn(),
 });
 
 function LocationSearch() {
@@ -86,5 +86,44 @@ describe("Deployments page", () => {
     rerender(<MemoryRouter initialEntries={["/dashboard/deployments"]}><Deployments /><LocationSearch /></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("renders superseded deployments as muted and without a Visit link", async () => {
+    mocked.useHistory.mockReturnValue({
+      ...defaultHistory(),
+      deployments: [{ ...deployment, status: "SUPERSEDED" }],
+    });
+    renderPage();
+
+    expect(await screen.findByText("Superseded")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /visit/i })).not.toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("silently refreshes deployment history when a terminal stream status arrives", async () => {
+    const history = defaultHistory();
+    history.deployments = [{ ...deployment, status: "BUILDING" }];
+    mocked.useHistory.mockReturnValue(history);
+    mocked.useStatus.mockReturnValue({
+      deployment: {
+        ...deployment, status: "RUNNING", timestamp: "2026-01-01T00:01:00Z",
+        metadata: { eventId: "terminal-event-1" },
+      },
+      error: null, isLoading: false, isTracking: false,
+    });
+    renderPage();
+
+    await waitFor(() => expect(history.refresh).toHaveBeenCalledOnce());
+    expect(screen.getByText("API")).toBeInTheDocument();
+  });
+
+  it("uses the safe fallback for an unknown status", async () => {
+    mocked.useHistory.mockReturnValue({
+      ...defaultHistory(),
+      deployments: [{ ...deployment, status: "FUTURE_STATUS" }],
+    });
+    renderPage();
+
+    expect(await screen.findByText("FUTURE_STATUS")).toBeInTheDocument();
   });
 });

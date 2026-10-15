@@ -81,9 +81,30 @@ export const useDeploymentHistory = (projectId?: string | null) => {
     }
   }, [projectId, state.isLoading, state.isLoadingMore, state.page, state.totalPages]);
 
+  const refresh = useCallback(async () => {
+    const requestGeneration = ++generation.current;
+    try {
+      const result = await getDeploymentHistory({ page: 0, size: PAGE_SIZE, projectId: projectId || undefined });
+      if (generation.current !== requestGeneration) return;
+      setState((current) => ({
+        ...current,
+        deployments: result.content,
+        page: result.page,
+        totalPages: result.totalPages,
+        totalElements: result.totalElements,
+        isLoadingMore: false,
+        error: null,
+      }));
+    } catch {
+      // Background refreshes should not replace the current list or surface a new error.
+      setState((current) => current.isLoadingMore ? { ...current, isLoadingMore: false } : current);
+    }
+  }, [projectId]);
+
   return {
     ...state,
     retry: () => loadFirstPage(projectId),
+    refresh,
     loadMore,
     hasMore: state.page + 1 < state.totalPages,
   };

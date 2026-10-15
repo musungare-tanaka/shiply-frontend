@@ -3,7 +3,7 @@ import { API_BASE_URL, ApiError, deploymentFromStreamEvent, getDeployment, getDe
 import type { DeploymentStatusResponse, DeploymentStreamEvent } from "../lib/types";
 
 const POLL_INTERVAL_MS = 3000;
-const terminalStatuses = new Set(["RUNNING", "BUILD_FAILED", "DEPLOY_FAILED"]);
+const terminalStatuses = new Set(["RUNNING", "BUILD_FAILED", "DEPLOY_FAILED", "SUPERSEDED"]);
 
 export const isDeploymentTerminal = (status?: string | null) => Boolean(status && terminalStatuses.has(status));
 

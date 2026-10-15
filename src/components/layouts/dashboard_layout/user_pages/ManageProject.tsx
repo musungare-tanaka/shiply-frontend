@@ -68,7 +68,7 @@ export default function ManageProject() {
   }, [projectId]);
 
   const refreshServicesForTerminalDeployment = useCallback(async (deploymentId: string, status: string) => {
-    if (!projectId || !["RUNNING", "BUILD_FAILED", "DEPLOY_FAILED"].includes(status)) return;
+    if (!projectId || !["RUNNING", "BUILD_FAILED", "DEPLOY_FAILED", "SUPERSEDED"].includes(status)) return;
     const currentProjectId = projectId;
     const serviceId = activeDeploymentsById.current.get(deploymentId);
     if (!serviceId) return;
