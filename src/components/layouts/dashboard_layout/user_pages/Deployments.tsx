@@ -77,7 +77,12 @@ function DeploymentRow({ deployment, onTerminalStatus }: { deployment: Deploymen
         ) : null}
       </td>
       <td className="px-4 py-4">{deployment.projectName || "Project"}</td>
-      <td className="px-4 py-4"><DeploymentStatusBadge status={status} /></td>
+      <td className="px-4 py-4">
+        <DeploymentStatusBadge status={status} />
+        {status === "BUILD_RETRYING" && Number(metadata.attempt) > 0 && Number(metadata.maxAttempts) > 0 ? (
+          <div className="mt-1 text-xs app-muted">Retry scheduled — attempt {Number(metadata.attempt)} of {Number(metadata.maxAttempts)}</div>
+        ) : null}
+      </td>
       <td className="px-4 py-4">
         <time className="whitespace-nowrap" dateTime={deployment.createdAt} title={formatFullTimestamp(deployment.createdAt)}>
           {formatRelativeTimestamp(deployment.createdAt, now)}

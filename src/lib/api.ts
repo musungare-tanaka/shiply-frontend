@@ -295,9 +295,15 @@ export const getProjectDeploymentStreamToken = (projectId: string) =>
 
 const deploymentStatusRank: Record<string, number> = { QUEUED: 0, BUILDING: 1, BUILD_RETRYING: 1, BUILD_SUCCEEDED: 2, ORCHESTRATING: 3, DEPLOY_RETRYING: 3, DEPLOYED: 4, RUNNING: 5, BUILD_FAILED: 2, DEPLOY_FAILED: 5, SUPERSEDED: 6 };
 
-export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous?: DeploymentStatusResponse | null): DeploymentStatusResponse => previous &&
-  ((previous.status === "BUILD_FAILED" || previous.status === "DEPLOY_FAILED") ||
-    (deploymentStatusRank[event.status] ?? -1) < (deploymentStatusRank[previous.status || ""] ?? -1)) ? previous : ({
+export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous?: DeploymentStatusResponse | null): DeploymentStatusResponse => {
+  const priorAttempt = Number(previous?.metadata?.attempt || 0);
+  const nextAttempt = Number(event.attempt || 0);
+  const priorSequence = Number(previous?.metadata?.sequence || 0);
+  const nextSequence = Number(event.sequence || 0);
+  const orderedBuildEvent = event.stage === "build" && nextAttempt > 0 && priorAttempt > 0;
+  if (previous && orderedBuildEvent && (nextAttempt < priorAttempt || (nextAttempt === priorAttempt && nextSequence <= priorSequence))) return previous;
+  if (previous && (previous.status === "DEPLOY_FAILED" || (previous.status === "BUILD_FAILED" && (!orderedBuildEvent || nextAttempt <= priorAttempt)) || (!orderedBuildEvent && (deploymentStatusRank[event.status] ?? -1) < (deploymentStatusRank[previous.status || ""] ?? -1)))) return previous;
+  return ({
   deploymentId: event.deploymentId,
   projectId: event.projectId || previous?.projectId || "",
   serviceId: event.serviceId || previous?.serviceId || "",
@@ -305,5 +311,8 @@ export const deploymentFromStreamEvent = (event: DeploymentStreamEvent, previous
   status: event.status,
   eventType: event.stage,
   timestamp: event.timestamp,
-  metadata: { ...(previous?.metadata || {}), message: event.message, ingressHost: event.ingressHost, tlsEnabled: event.tlsEnabled, eventId: event.id },
-});
+  metadata: { ...(previous?.metadata || {}), message: event.message, ingressHost: event.ingressHost, tlsEnabled: event.tlsEnabled, eventId: event.id,
+    ...(event.attempt != null ? { attempt: event.attempt } : {}), ...(event.maxAttempts != null ? { maxAttempts: event.maxAttempts } : {}),
+    ...(event.sequence != null ? { sequence: event.sequence } : {}) },
+  });
+};

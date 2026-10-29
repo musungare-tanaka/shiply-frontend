@@ -321,4 +321,7 @@ export interface DeploymentStreamEvent {
   timestamp: string;
   ingressHost?: string | null;
   tlsEnabled?: boolean | null;
+  attempt?: number | null;
+  maxAttempts?: number | null;
+  sequence?: number | null;
 }

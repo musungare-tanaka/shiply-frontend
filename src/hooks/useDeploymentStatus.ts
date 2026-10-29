@@ -112,7 +112,7 @@ const connectStream = async (deploymentId: string, entry: DeploymentEntry) => {
       entry.error = null; entry.streamFailures = 0; entry.isLoading = false;
       try { localStorage.setItem(`shiply.deployment.${deploymentId}`, JSON.stringify(entry.deployment)); } catch { /* optional cross-tab cache */ }
       updateSnapshot(entry); notify(entry);
-      if (isDeploymentTerminal(event.status)) { source.close(); entry.source = null; }
+      if (isDeploymentTerminal(entry.deployment?.status)) { source.close(); entry.source = null; }
     });
     source.onerror = () => {
       source.close(); entry.source = null; entry.streamFailures += 1;

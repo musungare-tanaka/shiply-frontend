@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, cancelSubscription, getBillingOverview, getDeployment, getDeploymentHistory, getPaymentHistory, getPaymentStatus, getPricingCatalog, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
+import { ApiError, cancelSubscription, deploymentFromStreamEvent, getBillingOverview, getDeployment, getDeploymentHistory, getPaymentHistory, getPaymentStatus, getPricingCatalog, getProjectDeployments, initiatePayment, triggerDeploy } from "./api";
 
 describe("deployment API calls", () => {
   const fetchMock = vi.fn();
@@ -116,5 +116,17 @@ describe("deployment API calls", () => {
     });
 
     expect(localStorage.getItem("token")).toBe("test-token");
+  });
+});
+
+describe("deployment stream attempt ordering", () => {
+  const previous = { deploymentId:"d", projectId:"p", serviceId:"s", serviceName:"api", status:"BUILD_RETRYING", eventType:"deployment.build.retrying", timestamp:"2026-01-01T00:00:00Z", metadata:{attempt:2,maxAttempts:5,sequence:0} };
+  it("carries attempt progress into status metadata", () => {
+    const result = deploymentFromStreamEvent({ id:"retry-2", deploymentId:"d", status:"BUILD_RETRYING", stage:"build", message:"Temporary error", timestamp:"2026-01-01T00:00:00Z", attempt:2,maxAttempts:5,sequence:0 }, null);
+    expect(result.metadata).toMatchObject({attempt:2,maxAttempts:5,sequence:0});
+  });
+  it("ignores older attempts and older events within the active attempt", () => {
+    expect(deploymentFromStreamEvent({ id:"old",deploymentId:"d",status:"BUILDING",stage:"build",message:"",timestamp:"2026-01-01T00:00:00Z",attempt:1,sequence:1 }, previous)).toBe(previous);
+    expect(deploymentFromStreamEvent({ id:"late",deploymentId:"d",status:"BUILD_RETRYING",stage:"build",message:"",timestamp:"2026-01-01T00:00:00Z",attempt:2,sequence:0 }, { ...previous, metadata:{attempt:2,sequence:1} })).toMatchObject({status:"BUILD_RETRYING"});
   });
 });
